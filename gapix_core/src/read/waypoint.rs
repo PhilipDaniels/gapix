@@ -14,11 +14,10 @@ use super::{
 /// Parses a waypoint. Waypoints can appear under the 'gpx' tag, as part of a
 /// route or as part of a track.
 pub(crate) fn parse_waypoint(
-    event: &BytesStart<'_>,
+    start_element: &BytesStart<'_>,
     xml_reader: &mut Reader<&[u8]>,
-    expected_end_tag: &[u8], // Possible ending tags: wpt, rtept, trkpt
 ) -> Result<Waypoint> {
-    let mut attributes = Attributes::new(event, xml_reader)?;
+    let mut attributes = Attributes::new(start_element, xml_reader)?;
     let lat = attributes.get("lat")?;
     let lon = attributes.get("lon")?;
     if !attributes.is_empty() {
@@ -95,7 +94,7 @@ pub(crate) fn parse_waypoint(
                 e => bail!("Unexpected element {:?}", xml_reader.bytes_to_cow(e)),
             },
             Ok(Event::End(e)) => {
-                if e.name().as_ref() == expected_end_tag {
+                if e.name().as_ref() == start_element.name().as_ref() {
                     return Ok(wp);
                 } else {
                     // TODO: Check for all valid ends.

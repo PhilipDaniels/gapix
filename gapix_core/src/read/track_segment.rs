@@ -12,7 +12,7 @@ pub(crate) fn parse_track_segment(xml_reader: &mut Reader<&[u8]>) -> Result<Trac
         match xml_reader.read_event() {
             Ok(Event::Start(start)) => match start.name().as_ref() {
                 b"trkpt" => {
-                    let point = parse_waypoint(&start, xml_reader, b"trkpt")?;
+                    let point = parse_waypoint(&start, xml_reader)?;
                     segment.points.push(point);
                 }
                 b"extensions" => {

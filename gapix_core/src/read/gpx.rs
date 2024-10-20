@@ -45,10 +45,10 @@ pub(crate) fn parse_gpx(xml_reader: &mut Reader<&[u8]>) -> Result<Gpx> {
         match xml_reader.read_event() {
             Ok(Event::Start(start)) => match start.name().as_ref() {
                 b"metadata" => {
-                    gpx.metadata = parse_metadata(xml_reader)?;
+                    gpx.metadata = parse_metadata(&start, xml_reader)?;
                 }
                 b"wpt" => {
-                    let waypoint = parse_waypoint(&start, xml_reader, b"wpt")?;
+                    let waypoint = parse_waypoint(&start, xml_reader)?;
                     gpx.waypoints.push(waypoint);
                 }
                 b"rte" => {

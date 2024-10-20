@@ -40,7 +40,7 @@ pub(crate) fn parse_route(xml_reader: &mut Reader<&[u8]>) -> Result<Route> {
                     route.extensions = Some(parse_extensions(&start, xml_reader)?);
                 }
                 b"rtept" => {
-                    let point = parse_waypoint(&start, xml_reader, b"rtept")?;
+                    let point = parse_waypoint(&start, xml_reader)?;
                     route.points.push(point);
                 }
                 e => bail!("Unexpected Start element {:?}", xml_reader.bytes_to_cow(e)),
