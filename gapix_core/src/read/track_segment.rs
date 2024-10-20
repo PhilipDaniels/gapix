@@ -15,7 +15,7 @@ pub(crate) fn parse_track_segment(
     start_element: &BytesStart<'_>,
     xml_reader: &mut Reader<&[u8]>,
 ) -> Result<TrackSegment> {
-    check_no_attributes(&start_element, xml_reader)?;
+    check_no_attributes(start_element, xml_reader)?;
 
     let mut segment = TrackSegment::default();
 

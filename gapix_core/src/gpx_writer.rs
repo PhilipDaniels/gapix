@@ -36,7 +36,7 @@ pub fn write_gpx_to_file<P: AsRef<Path>>(output_file: P, gpx: &Gpx) -> Result<()
 #[time]
 pub fn write_gpx_to_writer<W: Write>(w: &mut W, gpx: &Gpx) -> Result<()> {
     write_declaration_element(w, &gpx.declaration).context("Failed to write <xml...> element")?;
-    write_gpxinfo_element_open(w, &gpx).context("Failed to write <gpx> element")?;
+    write_gpxinfo_element_open(w, gpx).context("Failed to write <gpx> element")?;
     write_metadata_element(w, &gpx.metadata).context("Failed to write <metadata> element")?;
     for track in &gpx.tracks {
         write_track(w, track)
@@ -150,7 +150,7 @@ fn write_trackpoint<W: Write>(w: &mut W, point: &Waypoint) -> Result<()> {
     }
 
     if let Some(ext) = &point.extensions {
-        write_extensions(w, &ext).context("Failed to write Garmin trackpoint extensions")?;
+        write_extensions(w, ext).context("Failed to write Garmin trackpoint extensions")?;
     }
 
     writeln!(w, "      </trkpt>")?;

@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::{bail, Result};
-use gapix_core::{read::read_gpx_from_file, model::Gpx};
+use gapix_core::{model::Gpx, read::read_gpx_from_file};
 use log::info;
 use logging_timer::time;
 
@@ -17,7 +17,7 @@ pub fn join_input_files<P: AsRef<Path>>(files: &[P]) -> Result<Gpx> {
 
     // Read in the first file. We will append the others to this one.
     let first_file = files[0].as_ref();
-    let gpx = read_gpx_from_file(&first_file)?;
+    let gpx = read_gpx_from_file(first_file)?;
     let mut gpx = gpx.into_single_track();
     let pts = &mut gpx.tracks[0].segments[0].points;
 
@@ -28,7 +28,7 @@ pub fn join_input_files<P: AsRef<Path>>(files: &[P]) -> Result<Gpx> {
     );
 
     for f in files.iter().skip(1) {
-        let next_gpx = read_gpx_from_file(&f)?;
+        let next_gpx = read_gpx_from_file(f)?;
         let mut next_gpx = next_gpx.into_single_track();
         let next_pts = &mut next_gpx.tracks[0].segments[0].points;
         info!(

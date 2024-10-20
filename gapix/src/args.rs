@@ -93,10 +93,10 @@ pub struct Args {
     files: Vec<PathBuf>,
 }
 
-const JOINED_EXT: &'static str = "joined.gpx";
-const SIMPLIFIED_EXT: &'static str = "simplified.gpx";
-const JOINED_SIMPLIFIED_EXT: &'static str = "joined.simplified.gpx";
-const ANALYSIS_EXT: &'static str = "xlsx";
+const JOINED_EXT: &str = "joined.gpx";
+const SIMPLIFIED_EXT: &str = "simplified.gpx";
+const JOINED_SIMPLIFIED_EXT: &str = "joined.simplified.gpx";
+const ANALYSIS_EXT: &str = "xlsx";
 
 impl Args {
     /// Returns the list of files to process, in sorted order. This is based on
@@ -108,8 +108,8 @@ impl Args {
         let mut files = Vec::new();
 
         for f in &self.files {
-            if Self::is_gpx_file(&f) {
-                if Self::is_output_file(&f) {
+            if Self::is_gpx_file(f) {
+                if Self::is_output_file(f) {
                     warn!("Excluding {:?} because it is an output file", f);
                 } else {
                     files.push(f.clone());

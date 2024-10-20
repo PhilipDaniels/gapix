@@ -15,7 +15,7 @@ pub(crate) fn parse_route(
     start_element: &BytesStart<'_>,
     xml_reader: &mut Reader<&[u8]>,
 ) -> Result<Route> {
-    check_no_attributes(&start_element, xml_reader)?;
+    check_no_attributes(start_element, xml_reader)?;
 
     let mut route = Route::default();
 

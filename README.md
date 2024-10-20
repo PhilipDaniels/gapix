@@ -83,12 +83,20 @@ Or build from source using cargo.
 
 
 # TODO
+- Use start_element to check name. (start with track.rs)
+- Check all ending elements for allowable values
+- Consider depth_count
+- Check EOFs everywhere?
+- Declaration bug?
+- Parse self-closed empty tags?
 - Create a new type(s) for latlon which is bounded to the range -90.0..90.0.
   Also dgpsStationType (0..=1203)
 - A new Extensions type
+
 - Full pass lossless read and write of the complete XSD.
 - Pass some options into the gpx_writer to control the fidelity.
 - Move model into its own crate.
+
 - Reverse geocode the stopped stages and the first and last point.
   Use a separate crate, maybe publish it.
 - Track splitting
@@ -107,8 +115,3 @@ Or build from source using cargo.
 - GPX XSD: https://www.topografix.com/GPX/1/1/gpx.xsd
 - Trackpoint extensions XSD: https://www8.garmin.com/xmlschemas/TrackPointExtensionv1.xsd
 
-- Use start_element to check name. (start with track.rs)
-- Check all ending elements for allowable values
-- Consider depth_count
-- Check EOFs everywhere?
-- Declaration bug?

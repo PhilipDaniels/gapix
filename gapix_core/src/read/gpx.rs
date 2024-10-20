@@ -18,10 +18,12 @@ pub(crate) fn parse_gpx(
 ) -> Result<Gpx> {
     let mut attributes = Attributes::new(start_element, xml_reader)?;
 
-    let mut gpx = Gpx::default();
-    gpx.creator = attributes.get("creator")?;
-    gpx.version = attributes.get("version")?;
-    gpx.attributes = attributes.into_inner();
+    let mut gpx = Gpx {
+        creator: attributes.get("creator")?,
+        version: attributes.get("version")?,
+        attributes: attributes.into_inner(),
+        ..Default::default()
+    };
 
     loop {
         match xml_reader.read_event() {

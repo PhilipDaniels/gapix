@@ -91,7 +91,7 @@ pub fn write_summary_to_file<P: AsRef<Path>>(filename: P, workbook: Workbook) ->
 
 /// Writes the summary workbook to a writer.
 #[time]
-pub fn write_summary_to_writer<W: Write>(writer: &mut W, mut workbook: Workbook) -> Result<()>
+pub fn write_summary_to_writer<W>(writer: &mut W, mut workbook: Workbook) -> Result<()>
 where
     W: Write + Seek + Send,
 {
@@ -113,7 +113,7 @@ where
 fn write_stages(ws: &mut Worksheet, gpx: &EnrichedGpx, stages: &StageList) -> Result<()> {
     let mut fc = FormatControl::new();
 
-    if stages.len() == 0 {
+    if stages.is_empty() {
         write_string(ws, &fc, "No stages detected")?;
         return Ok(());
     }

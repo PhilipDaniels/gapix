@@ -13,8 +13,10 @@ pub(crate) fn parse_link(
     xml_reader: &mut Reader<&[u8]>,
 ) -> Result<Link> {
     let mut attributes = Attributes::new(start_element, xml_reader)?;
-    let mut link = Link::default();
-    link.href = attributes.get("href")?;
+    let mut link = Link {
+        href: attributes.get("href")?,
+        ..Default::default()
+    };
     if !attributes.is_empty() {
         bail!("Found extra attributes on 'link' element");
     }

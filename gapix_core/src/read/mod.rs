@@ -81,14 +81,14 @@ pub fn read_gpx_from_reader(mut xml_reader: Reader<&[u8]>) -> Result<Gpx> {
 /// An extension trait for quick_xml::Reader that converts the underlying bytes
 /// into usable str and String values.
 pub(crate) trait XmlReaderConversions {
-    fn bytes_to_cow<'a, 'b>(&'a self, bytes: &'b [u8]) -> Result<Cow<'b, str>>;
+    fn bytes_to_cow<'a>(&self, bytes: &'a [u8]) -> Result<Cow<'a, str>>;
     fn bytes_to_string(&self, bytes: &[u8]) -> Result<String>;
     fn cow_to_string(&self, bytes: Cow<'_, [u8]>) -> Result<String>;
 }
 
 impl<R> XmlReaderConversions for Reader<R> {
     #[inline]
-    fn bytes_to_cow<'a, 'b>(&'a self, bytes: &'b [u8]) -> Result<Cow<'b, str>> {
+    fn bytes_to_cow<'a>(&self, bytes: &'a [u8]) -> Result<Cow<'a, str>> {
         // It is important to pass the bytes through decode() in order to do a
         // proper conversion.
         Ok(self.decoder().decode(bytes)?)
@@ -152,11 +152,9 @@ impl XmlReaderExtensions for Reader<&[u8]> {
 /// A helper method to simplify tests. Often we need to get the contents of an
 /// 'Event::Start' event type.
 #[cfg(test)]
-fn start_parse<'a, 'b>(
-    xml_reader: &'a mut Reader<&'b [u8]>,
-) -> Result<quick_xml::events::BytesStart<'b>> {
+fn start_parse<'a>(xml_reader: &mut Reader<&'a [u8]>) -> Result<quick_xml::events::BytesStart<'a>> {
     match xml_reader.read_event().unwrap() {
-        Event::Start(start) => return Ok(start),
+        Event::Start(start) => Ok(start),
         _ => panic!("Failed to parse Event::Start(_) element"),
     }
 }
@@ -167,7 +165,7 @@ fn check_no_attributes<C: XmlReaderConversions>(
     start_element: &BytesStart<'_>,
     xml_reader: &C,
 ) -> Result<()> {
-    if let Some(_) = start_element.attributes().next() {
+    if start_element.attributes().next().is_some() {
         bail!(
             "Extra attributes found on '{:?}' element",
             xml_reader.bytes_to_cow(start_element.name().into_inner())

@@ -4,9 +4,9 @@ use clap::builder::styling::AnsiColor;
 use env_logger::Builder;
 use gapix_core::{
     excel::{create_summary_xlsx, write_summary_to_file, Hyperlink},
-    read::read_gpx_from_file,
     gpx_writer::write_gpx_to_file,
     model::Gpx,
+    read::read_gpx_from_file,
     simplification::{metres_to_epsilon, reduce_trackpoints_by_rdp},
     stage::{detect_stages, StageDetectionParameters},
 };
@@ -56,7 +56,7 @@ fn main2() -> Result<()> {
         if let Some(joined_filename) = &rof.joined_file {
             let mut gpx = join_input_files(&input_files)?;
             gpx.filename = Some(joined_filename.clone());
-            write_gpx_to_file(&joined_filename, &gpx)?;
+            write_gpx_to_file(joined_filename, &gpx)?;
             analyse_gpx(&gpx, &args, &rof)?;
             simplify_gpx(gpx, &args, rof)?;
         }
@@ -67,7 +67,7 @@ fn main2() -> Result<()> {
     // The other modes break down to 'process each file separately'.
     debug!("In per-file mode");
     for f in &input_files {
-        let rof = get_required_outputs(&args, &f);
+        let rof = get_required_outputs(&args, f);
         debug!("Required Output Files: {:?}", &rof);
         let gpx = read_gpx_from_file(f)?;
         let gpx = gpx.into_single_track();
@@ -125,7 +125,7 @@ fn simplify_gpx(mut gpx: Gpx, args: &Args, rof: RequiredOutputFiles) -> Result<(
             gpx.filename
             );
 
-        write_gpx_to_file(&simplified_file, &gpx)?;
+        write_gpx_to_file(simplified_file, &gpx)?;
     }
 
     Ok(())

@@ -40,11 +40,11 @@ mod tests {
     use quick_xml::{events::Event, Reader};
 
     // This one is a bit different, returns a different type.
-    fn start_parse_of_decl<'a, 'b>(
-        xml_reader: &'a mut Reader<&'b [u8]>,
-    ) -> Result<quick_xml::events::BytesDecl<'b>> {
+    fn start_parse_of_decl<'a>(
+        xml_reader: &mut Reader<&'a [u8]>,
+    ) -> Result<quick_xml::events::BytesDecl<'a>> {
         match xml_reader.read_event().unwrap() {
-            Event::Decl(decl) => return Ok(decl),
+            Event::Decl(decl) => Ok(decl),
             _ => panic!("Failed to parse Event::Decl(_) element"),
         }
     }

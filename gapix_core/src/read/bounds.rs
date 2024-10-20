@@ -10,12 +10,12 @@ pub(crate) fn parse_bounds<C: XmlReaderConversions>(
     converter: &C,
 ) -> Result<Bounds> {
     let mut attributes = Attributes::new(start_element, converter)?;
-    let mut bounds = Bounds::default();
-    bounds.min_lat = attributes.get("minlat")?;
-    bounds.min_lon = attributes.get("minlon")?;
-    bounds.max_lat = attributes.get("maxlat")?;
-    bounds.max_lon = attributes.get("maxlon")?;
-
+    let bounds = Bounds {
+        min_lat: attributes.get("minlat")?,
+        min_lon: attributes.get("minlon")?,
+        max_lat: attributes.get("maxlat")?,
+        max_lon: attributes.get("maxlon")?,
+    };
     if !attributes.is_empty() {
         bail!("Found extra attributes on 'bounds' element");
     }

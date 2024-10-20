@@ -269,12 +269,19 @@ impl StageList {
         &self.0[self.len() - 1].end
     }
 
+    /// Adds another stage to the end of the list.
     pub fn push(&mut self, stage: Stage) {
         self.0.push(stage);
     }
 
+    /// Returns the number of stages.
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+
+    /// Returns true if there are no stages.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     /// Returns the start time of the first Stage.
@@ -344,15 +351,18 @@ impl StageList {
         let mut current_min = &self.0[0];
 
         for stage in self.iter() {
-            match (current_min.min_elevation.as_ref(), stage.min_elevation.as_ref()) {
+            match (
+                current_min.min_elevation.as_ref(),
+                stage.min_elevation.as_ref(),
+            ) {
                 (Some(min_ele), Some(stg)) => {
                     if stg.ele < min_ele.ele {
                         current_min = stage;
                     }
-                },
+                }
                 (None, Some(_)) => {
                     current_min = stage;
-                },
+                }
                 _ => {}
             }
         }
@@ -365,15 +375,18 @@ impl StageList {
         let mut current_max = &self.0[0];
 
         for stage in self.iter() {
-            match (current_max.max_elevation.as_ref(), stage.max_elevation.as_ref()) {
+            match (
+                current_max.max_elevation.as_ref(),
+                stage.max_elevation.as_ref(),
+            ) {
                 (Some(max_ele), Some(stg)) => {
                     if stg.ele > max_ele.ele {
                         current_max = stage;
                     }
-                },
+                }
                 (None, Some(_)) => {
                     current_max = stage;
-                },
+                }
                 _ => {}
             }
         }
@@ -401,10 +414,10 @@ impl StageList {
                     if stg.speed_kmh > max_sp.speed_kmh {
                         current_max = stage;
                     }
-                },
+                }
                 (None, Some(_)) => {
                     current_max = stage;
-                },
+                }
                 _ => {}
             }
         }
@@ -832,7 +845,7 @@ fn find_heart_rates(
             if let Some(m) = max.as_ref() {
                 let mhr = m.heart_rate().expect("Should be safe to unwrap because 'max' is only set for points that have heart rates");
                 if hr > mhr {
-                    max = Some(point.clone());        
+                    max = Some(point.clone());
                 }
             } else {
                 // No current max, this point has a hr so use it.

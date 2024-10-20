@@ -16,7 +16,7 @@ pub(crate) fn parse_metadata(
     start_element: &BytesStart<'_>,
     xml_reader: &mut Reader<&[u8]>,
 ) -> Result<Metadata> {
-    check_no_attributes(&start_element, xml_reader)?;
+    check_no_attributes(start_element, xml_reader)?;
 
     let mut md = Metadata::default();
 

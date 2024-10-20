@@ -6,7 +6,8 @@ use time::{Duration, OffsetDateTime};
 
 use crate::{
     model::{
-        Email, EnrichedGpx, EnrichedTrackPoint, Extensions, FixType, Gpx, Lat, Link, Lon, Metadata, Waypoint, XmlDeclaration
+        Email, EnrichedGpx, EnrichedTrackPoint, Extensions, FixType, Gpx, Lat, Link, Lon, Metadata,
+        Waypoint, XmlDeclaration,
     },
     stage::{distance_between_points_metres, speed_kmh_from_duration},
 };
@@ -33,7 +34,7 @@ impl Gpx {
             waypoints: Default::default(),
             routes: Default::default(),
             tracks: Default::default(),
-            extensions: Default::default()
+            extensions: Default::default(),
         }
     }
 
@@ -133,7 +134,7 @@ impl Extensions {
     /// Constructs a new Extensions object from the raw value.
     pub fn new<S: Into<String>>(value: S) -> Self {
         Self {
-            raw_xml: value.into()
+            raw_xml: value.into(),
         }
     }
 
@@ -155,10 +156,11 @@ impl Default for XmlDeclaration {
 
 impl Waypoint {
     pub fn with_lat_lon(lat: Lat, lon: Lon) -> Self {
-        let mut v = Self::default();
-        v.lat = lat;
-        v.lon = lon;
-        v
+        Self {
+            lat,
+            lon,
+            ..Default::default()
+        }
     }
 }
 
@@ -200,7 +202,10 @@ impl TryFrom<String> for FixType {
             "3d" => Ok(FixType::ThreeDimensional),
             "dgps" => Ok(FixType::DGPS),
             "pps" => Ok(FixType::PPS),
-            _ => Err(anyhow!("{} is not a valid FixType (valid values are 'none', '2d', '3d', 'dgps', 'pps')", value))
+            _ => Err(anyhow!(
+                "{} is not a valid FixType (valid values are 'none', '2d', '3d', 'dgps', 'pps')",
+                value
+            )),
         }
     }
 }
