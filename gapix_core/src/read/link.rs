@@ -42,3 +42,78 @@ pub(crate) fn parse_link(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::read::start_parse;
+    use quick_xml::Reader;
+
+    #[test]
+    fn valid_link_all_fields() {
+        let mut xml_reader = Reader::from_str(
+            r#"<link href="http://example.com">
+                 <text>Some text here</text>
+                 <type>jpeg</type>
+               </link>"#,
+        );
+
+        let start = start_parse(&mut xml_reader).unwrap();
+        let result = parse_link(&start, &mut xml_reader).unwrap();
+        assert_eq!(result.href, "http://example.com");
+        assert_eq!(result.text, Some("Some text here".to_string()));
+        assert_eq!(result.r#type, Some("jpeg".to_string()));
+    }
+
+    #[test]
+    fn valid_link_href_only() {
+        let mut xml_reader = Reader::from_str(r#"<link href="http://example.com"></link>"#);
+
+        let start = start_parse(&mut xml_reader).unwrap();
+        let result = parse_link(&start, &mut xml_reader).unwrap();
+        assert_eq!(result.href, "http://example.com");
+        assert_eq!(result.text, None);
+        assert_eq!(result.r#type, None);
+    }
+
+    #[test]
+    fn missing_href() {
+        let mut xml_reader = Reader::from_str(
+            r#"<link>
+                 <text>Some text here</text>
+                 <type>jpeg</type>
+               </link>"#,
+        );
+
+        let start = start_parse(&mut xml_reader).unwrap();
+        let result = parse_link(&start, &mut xml_reader);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn extra_elements() {
+        let mut xml_reader = Reader::from_str(
+            r#"<link href="http://example.com">
+                 <text>Some text here</text>
+                 <type>jpeg</type>
+                 <foo>bar</foo>
+               </link>"#,
+        );
+
+        let start = start_parse(&mut xml_reader).unwrap();
+        let result = parse_link(&start, &mut xml_reader);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn extra_attributes() {
+        let mut xml_reader = Reader::from_str(
+            r#"<link href="http://example.com" foo="bar">
+               </link>"#,
+        );
+
+        let start = start_parse(&mut xml_reader).unwrap();
+        let result = parse_link(&start, &mut xml_reader);
+        assert!(result.is_err());
+    }
+}
