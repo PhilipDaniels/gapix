@@ -11,10 +11,7 @@ use logging_timer::time;
 use crate::{
     byte_counter::ByteCounter,
     formatting::format_utc_date,
-    model::{
-        Extensions, Gpx, Link, Metadata, Track, TrackSegment, Waypoint,
-        XmlDeclaration,
-    },
+    model::{Extensions, Gpx, Link, Metadata, Track, TrackSegment, Waypoint, XmlDeclaration},
 };
 
 /// Writes a GPX to file with full-fidelity, i.e. everything we can write is
@@ -27,7 +24,7 @@ pub fn write_gpx_to_file<P: AsRef<Path>>(output_file: P, gpx: &Gpx) -> Result<()
     let mut w = ByteCounter::new(w);
     write_gpx_to_writer(&mut w, gpx)?;
     info!(
-        "GPX file {:?}, {} Kb",
+        "Wrote PX file {:?}, {} Kb",
         output_file,
         w.bytes_written() / 1024
     );

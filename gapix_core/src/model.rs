@@ -217,6 +217,12 @@ pub type DGPSStationType = u16;
 /// likely to be filled in by typical GPS units.
 #[derive(Debug, Clone, Default)]
 pub struct Waypoint {
+    /// The latitude of the point. This is always in decimal degrees, and always
+    /// in WGS84 datum.
+    pub lat: Lat,
+    /// The longitude of the point. This is always in decimal degrees, and
+    /// always in WGS84 datum.
+    pub lon: Lon,
     /// Elevation (in meters) of the point.
     pub ele: Option<f64>,
     /// Creation/modification timestamp for the waypoint. Date and time in are in
@@ -262,12 +268,6 @@ pub struct Waypoint {
     pub age_of_dgps_data: Option<f64>,
     /// ID of DGPS station used in differential correction.
     pub dgps_id: Option<DGPSStationType>,
-    /// The latitude of the point. This is always in decimal degrees, and always
-    /// in WGS84 datum.
-    pub lat: Lat,
-    /// The longitude of the point. This is always in decimal degrees, and
-    /// always in WGS84 datum.
-    pub lon: Lon,
     /// Arbitrary extended information. Represented as an unparsed string.
     /// Garmin-specific trackpoint extensions as described at
     /// https://www8.garmin.com/xmlschemas/TrackPointExtensionv1.xsd are parsed
@@ -277,12 +277,17 @@ pub struct Waypoint {
 
 /// Type of GPS fix. none means GPS had no fix. To signify "the fix info is
 /// unknown", leave out fixType entirely.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FixType {
+    /// From the Xml value 'none'.
     None,
+    /// From the Xml value '2d'.
     TwoDimensional,
+    /// From the Xml value '3d'.
     ThreeDimensional,
+    /// From the Xml value 'dgps'.
     DGPS,
+    /// From the Xml value 'pps'.
     /// Indicates a military signal was used
     PPS,
 }
@@ -339,9 +344,7 @@ pub struct EnrichedTrackPoint {
     pub extensions: Option<GarminTrackpointExtensions>,
     pub extensions_new: Option<Extensions>,
 
-
     // All the below fields are the 'enriched' ones.
-
     /// The amount of time between this trackpoint and the previous one.
     pub delta_time: Option<Duration>,
     /// The distance between this trackpoint and the previous one.

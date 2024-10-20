@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use anyhow::{bail, Result};
 use quick_xml::{
     events::{BytesStart, Event},
@@ -13,33 +11,17 @@ use super::{
     route::parse_route, track::parse_track, waypoint::parse_waypoint,
 };
 
-pub(crate) struct GpxAttributes {
-    pub(crate) creator: String,
-    pub(crate) version: String,
-    pub(crate) other_attributes: HashMap<String, String>,
-}
-
-/// Parses the attributes on 'gpx' element itself. Gets around a multiple mut borrows
-/// problem in the main read_gpx_from_reader() function.
-pub(crate) fn parse_gpx_attributes<R>(
+/// Parses the 'gpx' element itself.
+pub(crate) fn parse_gpx(
     start_element: &BytesStart<'_>,
-    xml_reader: &Reader<R>,
-) -> Result<GpxAttributes> {
+    xml_reader: &mut Reader<&[u8]>,
+) -> Result<Gpx> {
     let mut attributes = Attributes::new(start_element, xml_reader)?;
 
-    let creator: String = attributes.get("creator")?;
-    let version: String = attributes.get("version")?;
-
-    Ok(GpxAttributes {
-        creator,
-        version,
-        other_attributes: attributes.into_inner(),
-    })
-}
-
-/// Parses the 'gpx' element itself.
-pub(crate) fn parse_gpx(xml_reader: &mut Reader<&[u8]>) -> Result<Gpx> {
     let mut gpx = Gpx::default();
+    gpx.creator = attributes.get("creator")?;
+    gpx.version = attributes.get("version")?;
+    gpx.attributes = attributes.into_inner();
 
     loop {
         match xml_reader.read_event() {
@@ -52,11 +34,11 @@ pub(crate) fn parse_gpx(xml_reader: &mut Reader<&[u8]>) -> Result<Gpx> {
                     gpx.waypoints.push(waypoint);
                 }
                 b"rte" => {
-                    let route = parse_route(xml_reader)?;
+                    let route = parse_route(&start, xml_reader)?;
                     gpx.routes.push(route);
                 }
                 b"trk" => {
-                    let track = parse_track(xml_reader)?;
+                    let track = parse_track(&start, xml_reader)?;
                     gpx.tracks.push(track);
                 }
                 b"extensions" => {

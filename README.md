@@ -107,5 +107,8 @@ Or build from source using cargo.
 - GPX XSD: https://www.topografix.com/GPX/1/1/gpx.xsd
 - Trackpoint extensions XSD: https://www8.garmin.com/xmlschemas/TrackPointExtensionv1.xsd
 
-Node = an element, an attribute 
-Element
+- Use start_element to check name. (start with track.rs)
+- Check all ending elements for allowable values
+- Consider depth_count
+- Check EOFs everywhere?
+- Declaration bug?

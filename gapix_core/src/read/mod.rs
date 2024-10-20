@@ -5,7 +5,7 @@ use std::{borrow::Cow, path::Path, str::FromStr};
 
 use anyhow::{bail, Context, Result};
 use declaration::parse_declaration;
-use gpx::{parse_gpx, parse_gpx_attributes};
+use gpx::parse_gpx;
 use log::info;
 use logging_timer::time;
 use quick_xml::{
@@ -58,14 +58,9 @@ pub fn read_gpx_from_reader(mut xml_reader: Reader<&[u8]>) -> Result<Gpx> {
             Ok(Event::Decl(decl)) => {
                 xml_declaration = Some(parse_declaration(&decl, &xml_reader)?);
             }
-            Ok(Event::Start(e)) => match e.name().as_ref() {
+            Ok(Event::Start(start)) => match start.name().as_ref() {
                 b"gpx" => {
-                    let attrs = parse_gpx_attributes(&e, &xml_reader)?;
-                    let mut partial_gpx = parse_gpx(&mut xml_reader)?;
-                    partial_gpx.creator = attrs.creator;
-                    partial_gpx.version = attrs.version;
-                    partial_gpx.attributes = attrs.other_attributes;
-                    gpx = Some(partial_gpx);
+                    gpx = Some(parse_gpx(&start, &mut xml_reader)?);
                 }
                 e => bail!("Unexpected Start element {:?}", xml_reader.bytes_to_cow(e)),
             },
