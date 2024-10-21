@@ -143,12 +143,10 @@ mod tests {
         );
         let start = start_parse(&mut xml_reader);
         let mut attrs = Attributes::new(&start, &xml_reader).unwrap();
-        let result: GapixError = attrs.get::<&str, String>("blah").unwrap_err();
+        let result: Result<_, GapixError> = attrs.get::<&str, String>("blah");
         match result {
-            GapixError::MandatoryAttributeNotFound(attr_name) => {
-                assert_eq!(attr_name, "blah")
-            }
-            _ => panic!("Unexpected error type {:?}", result),
-        }
+            Err(GapixError::MandatoryAttributeNotFound(a)) if a == "blah" => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
     }
 }

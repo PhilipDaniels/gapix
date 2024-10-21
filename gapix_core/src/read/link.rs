@@ -105,8 +105,10 @@ mod tests {
         );
 
         let start = start_parse(&mut xml_reader);
-        let result = parse_link(&start, &mut xml_reader);
-        assert!(result.is_err());
+        match parse_link(&start, &mut xml_reader) {
+            Err(GapixError::UnexpectedStartElement(_)) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
     }
 
     #[test]
@@ -117,7 +119,9 @@ mod tests {
         );
 
         let start = start_parse(&mut xml_reader);
-        let result = parse_link(&start, &mut xml_reader);
-        assert!(result.is_err());
+        match parse_link(&start, &mut xml_reader) {
+            Err(GapixError::UnexpectedAttributes { .. }) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
     }
 }

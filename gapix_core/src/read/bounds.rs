@@ -43,8 +43,10 @@ mod tests {
         let mut xml_reader =
             Reader::from_str(r#"<bounds maxlat="1.1" minlon="-53.1111" maxlon="88.88">"#);
         let start = start_parse(&mut xml_reader);
-        let result = parse_bounds(&start, &xml_reader);
-        assert!(result.is_err());
+        match parse_bounds(&start, &mut xml_reader) {
+            Err(GapixError::MandatoryAttributeNotFound(a)) if a == "minlat" => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
     }
 
     #[test]
@@ -52,8 +54,10 @@ mod tests {
         let mut xml_reader =
             Reader::from_str(r#"<bounds minlat="-1.1" minlon="-53.1111" maxlon="88.88">"#);
         let start = start_parse(&mut xml_reader);
-        let result = parse_bounds(&start, &xml_reader);
-        assert!(result.is_err());
+        match parse_bounds(&start, &mut xml_reader) {
+            Err(GapixError::MandatoryAttributeNotFound(a)) if a == "maxlat" => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
     }
 
     #[test]
@@ -61,8 +65,10 @@ mod tests {
         let mut xml_reader =
             Reader::from_str(r#"<bounds minlat="-1.1" maxlat="1.1" maxlon="88.88">"#);
         let start = start_parse(&mut xml_reader);
-        let result = parse_bounds(&start, &xml_reader);
-        assert!(result.is_err());
+        match parse_bounds(&start, &mut xml_reader) {
+            Err(GapixError::MandatoryAttributeNotFound(a)) if a == "minlon" => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
     }
 
     #[test]
@@ -70,8 +76,10 @@ mod tests {
         let mut xml_reader =
             Reader::from_str(r#"<bounds minlat="-1.1" maxlat="1.1" minlon="-53.1111">"#);
         let start = start_parse(&mut xml_reader);
-        let result = parse_bounds(&start, &xml_reader);
-        assert!(result.is_err());
+        match parse_bounds(&start, &mut xml_reader) {
+            Err(GapixError::MandatoryAttributeNotFound(a)) if a == "maxlon" => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
     }
 
     #[test]
@@ -83,11 +91,14 @@ mod tests {
     }
 
     #[test]
-    fn extras() {
-        let mut xml_reader =
-            Reader::from_str(r#"<bounds maxlat="1.1" minlon="-53.1111" maxlon="88.88" foo="bar">"#);
+    fn extra_attributes() {
+        let mut xml_reader = Reader::from_str(
+            r#"<bounds minlat="-1.1" maxlat="1.1" minlon="-53.1111" maxlon="88.88" foo="bar">"#,
+        );
         let start = start_parse(&mut xml_reader);
-        let result = parse_bounds(&start, &xml_reader);
-        assert!(result.is_err());
+        match parse_bounds(&start, &mut xml_reader) {
+            Err(GapixError::UnexpectedAttributes { .. }) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
     }
 }

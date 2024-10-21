@@ -87,10 +87,33 @@ pub(crate) fn parse_waypoint(
                 e => return Err(GapixError::bad_start(e, xml_reader)),
             },
             Ok(Event::End(e)) => {
-                if e.name().as_ref() == start_element.name().as_ref() {
+                let n = e.name();
+                let n = n.as_ref();
+                if n == start_element.name().as_ref() {
                     return Ok(wp);
+                } else if n == b"ele"
+                    || n == b"time"
+                    || n == b"magvar"
+                    || n == b"geoidheight"
+                    || n == b"name"
+                    || n == b"cmt"
+                    || n == b"desc"
+                    || n == b"src"
+                    || n == b"link"
+                    || n == b"sym"
+                    || n == b"type"
+                    || n == b"fix"
+                    || n == b"sat"
+                    || n == b"hdop"
+                    || n == b"vdop"
+                    || n == b"pdop"
+                    || n == b"ageofdgpsdata"
+                    || n == b"dgpsid"
+                    || n == b"extensions"
+                {
+                    // These are expected endings, do nothing.
                 } else {
-                    // TODO: Check for all valid ends.
+                    return Err(GapixError::bad_end(n, xml_reader));
                 }
             }
             // Ignore spurious Event::Text, I think they are newlines.
@@ -170,25 +193,29 @@ mod tests {
     #[test]
     fn extra_elements() {
         let mut xml_reader = Reader::from_str(
-            r#"<trkpt>
+            r#"<trkpt lat="253.20625" lon="-11.450350">
                  <foo>bar</foo>
                </trkpt>"#,
         );
 
         let start = start_parse(&mut xml_reader);
-        let result = parse_waypoint(&start, &mut xml_reader);
-        assert!(result.is_err());
+        match parse_waypoint(&start, &mut xml_reader) {
+            Err(GapixError::UnexpectedStartElement(_)) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
     }
 
     #[test]
     fn extra_attributes() {
         let mut xml_reader = Reader::from_str(
-            r#"<trkpt foo="bar">
+            r#"<trkpt lat="253.20625" lon="-11.450350" foo="bar">
                </trkpt>"#,
         );
 
         let start = start_parse(&mut xml_reader);
-        let result = parse_waypoint(&start, &mut xml_reader);
-        assert!(result.is_err());
+        match parse_waypoint(&start, &mut xml_reader) {
+            Err(GapixError::UnexpectedAttributes { .. }) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
     }
 }

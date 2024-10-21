@@ -83,8 +83,10 @@ mod tests {
     fn missing_version() {
         let mut xml_reader = Reader::from_str(r#"<?xml encoding="UTF-8"?>"#);
         let start = start_parse_of_decl(&mut xml_reader);
-        let result = parse_declaration(&start, &xml_reader);
-        assert!(result.is_err());
+        match parse_declaration(&start, &mut xml_reader) {
+            Err(GapixError::XmlError { .. }) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
     }
 
     // TODO: Log this as a bug, it should not allow extra attributes.

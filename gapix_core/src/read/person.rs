@@ -88,20 +88,23 @@ mod tests {
     }
 
     #[test]
-    fn extra_attributes() {
-        let mut xml_reader = Reader::from_str(r#"<person foo="bar"></person>"#);
-
-        let start = start_parse(&mut xml_reader);
-        let result = parse_person(&start, &mut xml_reader);
-        assert!(result.is_err());
-    }
-
-    #[test]
     fn extra_fields() {
         let mut xml_reader = Reader::from_str(r#"<person><foo>bar</foo></person>"#);
 
         let start = start_parse(&mut xml_reader);
-        let result = parse_person(&start, &mut xml_reader);
-        assert!(result.is_err());
+        match parse_person(&start, &mut xml_reader) {
+            Err(GapixError::UnexpectedStartElement(_)) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
+    }
+    #[test]
+    fn extra_attributes() {
+        let mut xml_reader = Reader::from_str(r#"<person foo="bar"></person>"#);
+
+        let start = start_parse(&mut xml_reader);
+        match parse_person(&start, &mut xml_reader) {
+            Err(GapixError::UnexpectedAttributes { .. }) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
     }
 }

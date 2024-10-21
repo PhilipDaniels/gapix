@@ -83,10 +83,6 @@ Or build from source using cargo.
 
 
 # TODO
-- Implement thiserror.
-- Use start_element to check name. (start with track.rs)
-- Check all ending elements for allowable values
-- Consider depth_count
 - Check EOFs everywhere?
 - Declaration bug?
 - Parse self-closed empty tags?

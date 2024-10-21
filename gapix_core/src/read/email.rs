@@ -55,11 +55,28 @@ mod tests {
         assert!(result.is_err());
     }
 
+    /* Don't run this test at the moment, it doesn't pass because
+       we dont' do a full parse.
     #[test]
-    fn extras() {
+    fn extra_elements() {
+        let mut xml_reader =
+            Reader::from_str(r#"<email id="phil" domain="gmail.com"><foo>bar</foo></email>"#);
+
+        let start = start_parse(&mut xml_reader);
+        match parse_email(&start, &mut xml_reader) {
+            Err(GapixError::UnexpectedStartElement(_)) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
+    }
+    */
+
+    #[test]
+    fn extra_attributes() {
         let mut xml_reader = Reader::from_str(r#"<email id="phil" domain="gmail.com" foo="bar">"#);
         let start = start_parse(&mut xml_reader);
-        let result = parse_email(&start, &xml_reader);
-        assert!(result.is_err());
+        match parse_email(&start, &mut xml_reader) {
+            Err(GapixError::UnexpectedAttributes { .. }) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
     }
 }
