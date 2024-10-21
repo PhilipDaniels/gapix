@@ -1,21 +1,17 @@
-use anyhow::{bail, Result};
 use quick_xml::{
     events::{BytesStart, Event},
     Reader,
 };
 
-use crate::model::Person;
+use crate::{error::GapixError, model::Person};
 
-use super::{
-    check_no_attributes, email::parse_email, link::parse_link, XmlReaderConversions,
-    XmlReaderExtensions,
-};
+use super::{attributes::Attributes, email::parse_email, link::parse_link, XmlReaderExtensions};
 
 pub(crate) fn parse_person(
     start_element: &BytesStart<'_>,
     xml_reader: &mut Reader<&[u8]>,
-) -> Result<Person> {
-    check_no_attributes(start_element, xml_reader)?;
+) -> Result<Person, GapixError> {
+    Attributes::check_is_empty(start_element, xml_reader)?;
 
     let mut person = Person::default();
 
@@ -31,18 +27,22 @@ pub(crate) fn parse_person(
                 b"link" => {
                     person.link = Some(parse_link(&start, xml_reader)?);
                 }
-                e => bail!("Unexpected Start element {:?}", xml_reader.bytes_to_cow(e)),
+                e => return Err(GapixError::bad_start(e, xml_reader)),
             },
             Ok(Event::End(e)) => {
-                if e.name().as_ref() == start_element.name().as_ref() {
+                let n = e.name();
+                let n = n.as_ref();
+                if n == start_element.name().as_ref() {
                     return Ok(person);
+                } else if n == b"name" || n == b"email" || n == b"link" {
+                    // These are expected endings, do nothing.
                 } else {
-                    // TODO: Check for all valid ends.
+                    return Err(GapixError::bad_end(n, xml_reader));
                 }
             }
             // Ignore spurious Event::Text, I think they are newlines.
             Ok(Event::Text(_)) => {}
-            e => bail!("Unexpected element {:?}", e),
+            e => return Err(GapixError::bad_event(e)),
         }
     }
 }
@@ -66,7 +66,7 @@ mod tests {
                </person>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_person(&start, &mut xml_reader).unwrap();
         assert_eq!(result.name, Some("Homer Simpson".to_string()));
         let email = result.email.unwrap();
@@ -80,7 +80,7 @@ mod tests {
     fn valid_person_no_fields() {
         let mut xml_reader = Reader::from_str(r#"<person></person>"#);
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_person(&start, &mut xml_reader).unwrap();
         assert_eq!(result.name, None);
         assert!(result.email.is_none());
@@ -91,7 +91,7 @@ mod tests {
     fn extra_attributes() {
         let mut xml_reader = Reader::from_str(r#"<person foo="bar"></person>"#);
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_person(&start, &mut xml_reader);
         assert!(result.is_err());
     }
@@ -100,7 +100,7 @@ mod tests {
     fn extra_fields() {
         let mut xml_reader = Reader::from_str(r#"<person><foo>bar</foo></person>"#);
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_person(&start, &mut xml_reader);
         assert!(result.is_err());
     }

@@ -1,18 +1,17 @@
-use anyhow::{bail, Result};
 use quick_xml::{
     events::{BytesStart, Event},
     Reader,
 };
 
-use crate::model::Copyright;
+use crate::{error::GapixError, model::Copyright};
 
-use super::{check_no_attributes, XmlReaderConversions, XmlReaderExtensions};
+use super::{attributes::Attributes, XmlReaderExtensions};
 
 pub(crate) fn parse_copyright(
     start_element: &BytesStart<'_>,
     xml_reader: &mut Reader<&[u8]>,
-) -> Result<Copyright> {
-    check_no_attributes(start_element, xml_reader)?;
+) -> Result<Copyright, GapixError> {
+    Attributes::check_is_empty(start_element, xml_reader)?;
 
     let mut copyright = Copyright::default();
 
@@ -28,21 +27,27 @@ pub(crate) fn parse_copyright(
                 b"author" => {
                     copyright.author = xml_reader.read_inner_as()?;
                 }
-                e => bail!("Unexpected Start element {:?}", xml_reader.bytes_to_cow(e)),
+                e => return Err(GapixError::bad_start(e, xml_reader)),
             },
-            Ok(Event::End(e)) => match e.name().as_ref() {
-                b"copyright" => {
+            Ok(Event::End(e)) => {
+                let n = e.name();
+                let n = n.as_ref();
+
+                if n == start_element.name().as_ref() {
                     if copyright.author.is_empty() {
-                        bail!("Did not find the 'author' element");
+                        return Err(GapixError::MandatoryElementNotFound("author".to_string()));
                     }
 
                     return Ok(copyright);
+                } else if n == b"year" || n == b"license" || n == b"author" {
+                    // These are expected endings, do nothing.
+                } else {
+                    return Err(GapixError::bad_end(n, xml_reader));
                 }
-                _ => {}
-            },
+            }
             // Ignore spurious Event::Text, I think they are newlines.
             Ok(Event::Text(_)) => {}
-            e => bail!("Unexpected element {:?}", e),
+            e => return Err(GapixError::bad_event(e)),
         }
     }
 }
@@ -63,7 +68,7 @@ mod tests {
                </copyright>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_copyright(&start, &mut xml_reader).unwrap();
         assert_eq!(result.year, Some(2024));
         assert_eq!(result.license, Some("MIT".to_string()));
@@ -78,7 +83,7 @@ mod tests {
                </copyright>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_copyright(&start, &mut xml_reader).unwrap();
         assert_eq!(result.year, None);
         assert_eq!(result.license, None);
@@ -94,7 +99,7 @@ mod tests {
                </copyright>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_copyright(&start, &mut xml_reader).unwrap();
         assert_eq!(result.year, Some(2024));
         assert_eq!(result.license, None);
@@ -110,7 +115,7 @@ mod tests {
                </copyright>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_copyright(&start, &mut xml_reader);
         assert!(result.is_err());
     }
@@ -124,7 +129,7 @@ mod tests {
                </copyright>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_copyright(&start, &mut xml_reader);
         assert!(result.is_err());
     }
@@ -137,7 +142,7 @@ mod tests {
                </copyright>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_copyright(&start, &mut xml_reader);
         assert!(result.is_err());
     }

@@ -1,14 +1,12 @@
-use anyhow::{bail, Result};
 use quick_xml::{
     events::{BytesStart, Event},
     Reader,
 };
 
-use crate::model::Waypoint;
+use crate::{error::GapixError, model::Waypoint};
 
 use super::{
-    attributes::Attributes, extensions::parse_extensions, link::parse_link, XmlReaderConversions,
-    XmlReaderExtensions,
+    attributes::Attributes, extensions::parse_extensions, link::parse_link, XmlReaderExtensions,
 };
 
 /// Parses a waypoint. Waypoints can appear under the 'gpx' tag, as part of a
@@ -16,16 +14,11 @@ use super::{
 pub(crate) fn parse_waypoint(
     start_element: &BytesStart<'_>,
     xml_reader: &mut Reader<&[u8]>,
-) -> Result<Waypoint> {
+) -> Result<Waypoint, GapixError> {
     let mut attributes = Attributes::new(start_element, xml_reader)?;
     let lat = attributes.get("lat")?;
     let lon = attributes.get("lon")?;
-    if !attributes.is_empty() {
-        bail!(
-            "Found extra attributes while parsing waypoint {:?}",
-            attributes
-        );
-    }
+    attributes.check_is_empty_now()?;
 
     let mut wp = Waypoint::with_lat_lon(lat, lon);
 
@@ -91,7 +84,7 @@ pub(crate) fn parse_waypoint(
                 b"extensions" => {
                     wp.extensions = Some(parse_extensions(&start, xml_reader)?);
                 }
-                e => bail!("Unexpected element {:?}", xml_reader.bytes_to_cow(e)),
+                e => return Err(GapixError::bad_start(e, xml_reader)),
             },
             Ok(Event::End(e)) => {
                 if e.name().as_ref() == start_element.name().as_ref() {
@@ -102,7 +95,7 @@ pub(crate) fn parse_waypoint(
             }
             // Ignore spurious Event::Text, I think they are newlines.
             Ok(Event::Text(_)) => {}
-            e => bail!("Unexpected element {:?}", e),
+            e => return Err(GapixError::bad_event(e)),
         }
     }
 }
@@ -146,7 +139,7 @@ mod tests {
                </trkpt>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_waypoint(&start, &mut xml_reader).unwrap();
         assert_eq!(result.lat, 253.20625);
         assert_eq!(result.lon, -11.450350);
@@ -182,7 +175,7 @@ mod tests {
                </trkpt>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_waypoint(&start, &mut xml_reader);
         assert!(result.is_err());
     }
@@ -194,7 +187,7 @@ mod tests {
                </trkpt>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_waypoint(&start, &mut xml_reader);
         assert!(result.is_err());
     }

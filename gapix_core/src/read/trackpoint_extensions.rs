@@ -1,13 +1,12 @@
-use anyhow::{bail, Result};
 use quick_xml::{events::Event, Reader};
 
-use crate::model::GarminTrackpointExtensions;
+use crate::{error::GapixError, model::GarminTrackpointExtensions};
 
-use super::{XmlReaderConversions, XmlReaderExtensions};
+use super::XmlReaderExtensions;
 
 pub(crate) fn parse_garmin_trackpoint_extensions(
     xml_reader: &mut Reader<&[u8]>,
-) -> Result<GarminTrackpointExtensions> {
+) -> Result<GarminTrackpointExtensions, GapixError> {
     let mut gext = GarminTrackpointExtensions::default();
 
     loop {
@@ -29,7 +28,7 @@ pub(crate) fn parse_garmin_trackpoint_extensions(
                 b"cad" => {
                     gext.cadence = Some(xml_reader.read_inner_as()?);
                 }
-                e => bail!("Unexpected Start element {:?}", xml_reader.bytes_to_cow(e)),
+                e => return Err(GapixError::bad_start(e, xml_reader)),
             },
             Ok(Event::End(e)) => match e.local_name().as_ref() {
                 b"TrackPointExtension" => { /* ignore, just a container element */ }
@@ -38,11 +37,11 @@ pub(crate) fn parse_garmin_trackpoint_extensions(
                 }
                 b"atemp" | b"wtemp" | b"depth" | b"hr" | b"cad" => { /* ignore, just the closing tags */
                 }
-                e => bail!("Unexpected element {:?}", xml_reader.bytes_to_cow(e)),
+                e => return Err(GapixError::bad_end(e, xml_reader)),
             },
             // Ignore spurious Event::Text, I think they are newlines.
             Ok(Event::Text(_)) => {}
-            e => bail!("Unexpected element {:?}", e),
+            e => return Err(GapixError::bad_event(e)),
         }
     }
 }

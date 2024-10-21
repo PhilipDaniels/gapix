@@ -3,18 +3,17 @@
 use core::str;
 use std::{borrow::Cow, path::Path, str::FromStr};
 
-use anyhow::{bail, Context, Result};
 use declaration::parse_declaration;
 use gpx::parse_gpx;
 use log::info;
 use logging_timer::time;
-use quick_xml::{
-    events::{BytesStart, Event},
-    Reader,
-};
+use quick_xml::{events::Event, Reader};
 use time::{format_description::well_known, OffsetDateTime};
 
-use crate::model::{Gpx, XmlDeclaration};
+use crate::{
+    error::GapixError,
+    model::{Gpx, XmlDeclaration},
+};
 
 mod attributes;
 mod bounds;
@@ -34,7 +33,7 @@ mod waypoint;
 
 /// The XSD, which defines the format of a GPX file, is at https://www.topografix.com/GPX/1/1/gpx.xsd
 #[time]
-pub fn read_gpx_from_file<P: AsRef<Path>>(input_file: P) -> Result<Gpx> {
+pub fn read_gpx_from_file<P: AsRef<Path>>(input_file: P) -> Result<Gpx, GapixError> {
     let input_file = input_file.as_ref();
     info!("Reading GPX file {:?}", input_file);
     let contents = std::fs::read(input_file)?;
@@ -43,13 +42,13 @@ pub fn read_gpx_from_file<P: AsRef<Path>>(input_file: P) -> Result<Gpx> {
     Ok(gpx)
 }
 
-pub fn read_gpx_from_slice(data: &[u8]) -> Result<Gpx> {
+pub fn read_gpx_from_slice(data: &[u8]) -> Result<Gpx, GapixError> {
     let xml_reader = Reader::from_reader(data);
     read_gpx_from_reader(xml_reader)
 }
 
 #[time]
-pub fn read_gpx_from_reader(mut xml_reader: Reader<&[u8]>) -> Result<Gpx> {
+pub fn read_gpx_from_reader(mut xml_reader: Reader<&[u8]>) -> Result<Gpx, GapixError> {
     let mut xml_declaration: Option<XmlDeclaration> = None;
     let mut gpx: Option<Gpx> = None;
 
@@ -62,17 +61,26 @@ pub fn read_gpx_from_reader(mut xml_reader: Reader<&[u8]>) -> Result<Gpx> {
                 b"gpx" => {
                     gpx = Some(parse_gpx(&start, &mut xml_reader)?);
                 }
-                e => bail!("Unexpected Start element {:?}", xml_reader.bytes_to_cow(e)),
+                e => {
+                    let name = xml_reader.bytes_to_string(e)?;
+                    return Err(GapixError::UnexpectedStartElement(name));
+                }
             },
             Ok(Event::Eof) => {
                 // We should already have consumed the closing '<gpx>' tag in parse_gpx().
                 // So the next thing will be EOF.
-                let mut gpx = gpx.context("Did not find the 'gpx' element")?;
-                gpx.declaration =
-                    xml_declaration.context("Did not find the 'xml' declaration element")?;
+                if gpx.is_none() {
+                    return Err(GapixError::ElementNotFound("gpx".to_string()));
+                }
+                let mut gpx = gpx.unwrap();
+                if xml_declaration.is_none() {
+                    return Err(GapixError::ElementNotFound("xml".to_string()));
+                }
+
+                gpx.declaration = xml_declaration.unwrap();
                 return Ok(gpx);
             }
-            Err(e) => bail!("Error at position {}: {:?}", xml_reader.error_position(), e),
+            Err(e) => return Err(e.into()),
             _ => (),
         }
     }
@@ -81,27 +89,27 @@ pub fn read_gpx_from_reader(mut xml_reader: Reader<&[u8]>) -> Result<Gpx> {
 /// An extension trait for quick_xml::Reader that converts the underlying bytes
 /// into usable str and String values.
 pub(crate) trait XmlReaderConversions {
-    fn bytes_to_cow<'a>(&self, bytes: &'a [u8]) -> Result<Cow<'a, str>>;
-    fn bytes_to_string(&self, bytes: &[u8]) -> Result<String>;
-    fn cow_to_string(&self, bytes: Cow<'_, [u8]>) -> Result<String>;
+    fn bytes_to_cow<'a>(&self, bytes: &'a [u8]) -> Result<Cow<'a, str>, GapixError>;
+    fn bytes_to_string(&self, bytes: &[u8]) -> Result<String, GapixError>;
+    fn cow_to_string(&self, bytes: Cow<'_, [u8]>) -> Result<String, GapixError>;
 }
 
 impl<R> XmlReaderConversions for Reader<R> {
     #[inline]
-    fn bytes_to_cow<'a>(&self, bytes: &'a [u8]) -> Result<Cow<'a, str>> {
+    fn bytes_to_cow<'a>(&self, bytes: &'a [u8]) -> Result<Cow<'a, str>, GapixError> {
         // It is important to pass the bytes through decode() in order to do a
         // proper conversion.
         Ok(self.decoder().decode(bytes)?)
     }
 
     #[inline]
-    fn bytes_to_string(&self, bytes: &[u8]) -> Result<String> {
+    fn bytes_to_string(&self, bytes: &[u8]) -> Result<String, GapixError> {
         // Ensure everything goes through decode().
         Ok(self.bytes_to_cow(bytes)?.into())
     }
 
     #[inline]
-    fn cow_to_string(&self, bytes: Cow<'_, [u8]>) -> Result<String> {
+    fn cow_to_string(&self, bytes: Cow<'_, [u8]>) -> Result<String, GapixError> {
         match bytes {
             // Ensure everything goes through decode().
             Cow::Borrowed(slice) => Ok(self.bytes_to_string(slice)?),
@@ -113,64 +121,50 @@ impl<R> XmlReaderConversions for Reader<R> {
 /// An extension trait for quick_xml::Reader that makes it convenient to read
 /// inner text and convert it to a specific type.
 pub(crate) trait XmlReaderExtensions {
-    fn read_inner_as_string(&mut self) -> Result<String>;
-    fn read_inner_as_time(&mut self) -> Result<OffsetDateTime>;
-    fn read_inner_as<T: FromStr>(&mut self) -> Result<T>;
+    fn read_inner_as_string(&mut self) -> Result<String, GapixError>;
+    fn read_inner_as_time(&mut self) -> Result<OffsetDateTime, GapixError>;
+    fn read_inner_as<T: FromStr>(&mut self) -> Result<T, GapixError>;
 }
 
 impl XmlReaderExtensions for Reader<&[u8]> {
     #[inline]
-    fn read_inner_as_string(&mut self) -> Result<String> {
+    fn read_inner_as_string(&mut self) -> Result<String, GapixError> {
         match self.read_event() {
-            Ok(Event::Text(text)) => {
-                Ok(self.bytes_to_string(&text)?)
+            Ok(Event::Text(text)) => Ok(self.bytes_to_string(&text)?),
+            event => {
+                let s = format!("{:?}", event);
+                Err(GapixError::MissingText(self.buffer_position(), s))
             }
-            e => bail!(
-                "Got unexpected XML element {:?} (was expecting Event::Text), this is either a bug or the document is corrupt",
-                e
-            ),
         }
     }
 
     #[inline]
-    fn read_inner_as_time(&mut self) -> Result<OffsetDateTime> {
+    fn read_inner_as_time(&mut self) -> Result<OffsetDateTime, GapixError> {
         let t = self.read_inner_as_string()?;
-        Ok(OffsetDateTime::parse(&t, &well_known::Rfc3339)?)
+        // Do not allow errors from the time library to surface in our API, as
+        // we may eventually allow a choice of time libraries between time and
+        // chrono.
+        OffsetDateTime::parse(&t, &well_known::Rfc3339)
+            .map_err(|e| GapixError::DateParseFailure(e.to_string()))
     }
 
     #[inline]
-    fn read_inner_as<T: FromStr>(&mut self) -> Result<T> {
-        let t = self.read_inner_as_string()?;
+    fn read_inner_as<T: FromStr>(&mut self) -> Result<T, GapixError> {
+        let value = self.read_inner_as_string()?;
 
-        match t.parse::<T>() {
-            Ok(v) => Ok(v),
-            Err(_) => bail!("Could not parse {} into {}", t, std::any::type_name::<T>()),
-        }
+        value.parse::<T>().map_err(|_| GapixError::ParseFailure {
+            from: value,
+            dest_type: std::any::type_name::<T>().to_string(),
+        })
     }
 }
 
 /// A helper method to simplify tests. Often we need to get the contents of an
 /// 'Event::Start' event type.
 #[cfg(test)]
-fn start_parse<'a>(xml_reader: &mut Reader<&'a [u8]>) -> Result<quick_xml::events::BytesStart<'a>> {
+fn start_parse<'a>(xml_reader: &mut Reader<&'a [u8]>) -> quick_xml::events::BytesStart<'a> {
     match xml_reader.read_event().unwrap() {
-        Event::Start(start) => Ok(start),
+        Event::Start(start) => start,
         _ => panic!("Failed to parse Event::Start(_) element"),
     }
-}
-
-/// Helper method. Checks to see if an element has any attributes and bails with
-/// an error if it does.
-fn check_no_attributes<C: XmlReaderConversions>(
-    start_element: &BytesStart<'_>,
-    xml_reader: &C,
-) -> Result<()> {
-    if start_element.attributes().next().is_some() {
-        bail!(
-            "Extra attributes found on '{:?}' element",
-            xml_reader.bytes_to_cow(start_element.name().into_inner())
-        );
-    }
-
-    Ok(())
 }

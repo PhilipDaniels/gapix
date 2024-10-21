@@ -1,10 +1,10 @@
-use anyhow::{anyhow, bail, Result};
 use geo::{point, Point};
 use log::debug;
 use logging_timer::time;
 use time::{Duration, OffsetDateTime};
 
 use crate::{
+    error::GapixError,
     model::{
         Email, EnrichedGpx, EnrichedTrackPoint, Extensions, FixType, Gpx, Lat, Link, Lon, Metadata,
         Waypoint, XmlDeclaration,
@@ -102,9 +102,9 @@ impl Gpx {
     /// Makes an EnrichedGpx from the Gpx. Each of the new trackpoints will have
     /// derived data calculated where possible. An error is returned if the Gpx
     /// is not in single-track form.
-    pub fn to_enriched_gpx(&self) -> Result<EnrichedGpx> {
+    pub fn to_enriched_gpx(&self) -> Result<EnrichedGpx, GapixError> {
         if !self.is_single_track() {
-            bail!("GPX must be in single track form before converting to Enriched format. See method into_single_track().");
+            return Err(GapixError::MultipleTracksFound);
         }
 
         let mut egpx = EnrichedGpx {
@@ -193,7 +193,7 @@ impl Link {
 }
 
 impl TryFrom<String> for FixType {
-    type Error = anyhow::Error;
+    type Error = GapixError;
 
     fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
         match value.as_ref() {
@@ -202,10 +202,7 @@ impl TryFrom<String> for FixType {
             "3d" => Ok(FixType::ThreeDimensional),
             "dgps" => Ok(FixType::DGPS),
             "pps" => Ok(FixType::PPS),
-            _ => Err(anyhow!(
-                "{} is not a valid FixType (valid values are 'none', '2d', '3d', 'dgps', 'pps')",
-                value
-            )),
+            _ => Err(GapixError::InvalidFixType(value)),
         }
     }
 }

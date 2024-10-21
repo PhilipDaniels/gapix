@@ -1,7 +1,6 @@
-use anyhow::{bail, Result};
 use quick_xml::events::BytesStart;
 
-use crate::model::Email;
+use crate::{error::GapixError, model::Email};
 
 use super::{attributes::Attributes, XmlReaderConversions};
 
@@ -9,16 +8,11 @@ use super::{attributes::Attributes, XmlReaderConversions};
 pub(crate) fn parse_email<C: XmlReaderConversions>(
     start_element: &BytesStart<'_>,
     converter: &C,
-) -> Result<Email> {
+) -> Result<Email, GapixError> {
     let mut attributes = Attributes::new(start_element, converter)?;
-
     let id: String = attributes.get("id")?;
     let domain: String = attributes.get("domain")?;
-
-    if !attributes.is_empty() {
-        bail!("Found extra attributes on 'email' element");
-    }
-
+    attributes.check_is_empty_now()?;
     Ok(Email::new(id, domain))
 }
 
@@ -31,7 +25,7 @@ mod tests {
     #[test]
     fn valid_email() {
         let mut xml_reader = Reader::from_str(r#"<email id="phil" domain="gmail.com">"#);
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_email(&start, &xml_reader).unwrap();
         assert_eq!(result.id, "phil");
         assert_eq!(result.domain, "gmail.com");
@@ -40,7 +34,7 @@ mod tests {
     #[test]
     fn missing_domain() {
         let mut xml_reader = Reader::from_str(r#"<email id="phil">"#);
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_email(&start, &xml_reader);
         assert!(result.is_err());
     }
@@ -48,7 +42,7 @@ mod tests {
     #[test]
     fn missing_id() {
         let mut xml_reader = Reader::from_str(r#"<email domain="gmail.com">"#);
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_email(&start, &xml_reader);
         assert!(result.is_err());
     }
@@ -56,7 +50,7 @@ mod tests {
     #[test]
     fn missing_both() {
         let mut xml_reader = Reader::from_str(r#"<email>"#);
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_email(&start, &xml_reader);
         assert!(result.is_err());
     }
@@ -64,7 +58,7 @@ mod tests {
     #[test]
     fn extras() {
         let mut xml_reader = Reader::from_str(r#"<email id="phil" domain="gmail.com" foo="bar">"#);
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_email(&start, &xml_reader);
         assert!(result.is_err());
     }

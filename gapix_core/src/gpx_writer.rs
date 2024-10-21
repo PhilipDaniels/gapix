@@ -4,22 +4,31 @@ use std::{
     path::Path,
 };
 
-use anyhow::{Context, Result};
 use log::info;
 use logging_timer::time;
 
 use crate::{
     byte_counter::ByteCounter,
+    error::GapixError,
     formatting::format_utc_date,
     model::{Extensions, Gpx, Link, Metadata, Track, TrackSegment, Waypoint, XmlDeclaration},
 };
 
 /// Writes a GPX to file with full-fidelity, i.e. everything we can write is
 /// written.
-pub fn write_gpx_to_file<P: AsRef<Path>>(output_file: P, gpx: &Gpx) -> Result<()> {
+pub fn write_gpx_to_file<P: AsRef<Path>>(output_file: P, gpx: &Gpx) -> Result<(), GapixError> {
     let output_file = output_file.as_ref();
-    let file =
-        File::create(output_file).with_context(|| format!("Failed to create {:?}", output_file))?;
+
+    let file = match File::create(output_file) {
+        Ok(f) => f,
+        Err(err) => {
+            return Err(GapixError::CreateFile {
+                path: output_file.to_owned(),
+                source: err,
+            })
+        }
+    };
+
     let w = BufWriter::new(file);
     let mut w = ByteCounter::new(w);
     write_gpx_to_writer(&mut w, gpx)?;
@@ -34,21 +43,23 @@ pub fn write_gpx_to_file<P: AsRef<Path>>(output_file: P, gpx: &Gpx) -> Result<()
 /// Writes a GPX to the specified writer with full-fidelity, i.e. everything we
 /// can write is written.
 #[time]
-pub fn write_gpx_to_writer<W: Write>(w: &mut W, gpx: &Gpx) -> Result<()> {
-    write_declaration_element(w, &gpx.declaration).context("Failed to write <xml...> element")?;
-    write_gpxinfo_element_open(w, gpx).context("Failed to write <gpx> element")?;
-    write_metadata_element(w, &gpx.metadata).context("Failed to write <metadata> element")?;
+pub fn write_gpx_to_writer<W: Write>(w: &mut W, gpx: &Gpx) -> Result<(), GapixError> {
+    write_declaration_element(w, &gpx.declaration)?;
+    write_gpxinfo_element_open(w, gpx)?;
+    write_metadata_element(w, &gpx.metadata)?;
     for track in &gpx.tracks {
-        write_track(w, track)
-            .with_context(|| format!("Failed to write <track> {:?}", track.name))?;
+        write_track(w, track)?;
     }
-    write_gpxinfo_element_close(w).context("Failed to write </gpx> element")?;
+    write_gpxinfo_element_close(w)?;
 
     w.flush()?;
     Ok(())
 }
 
-fn write_declaration_element<W: Write>(w: &mut W, declaration: &XmlDeclaration) -> Result<()> {
+fn write_declaration_element<W: Write>(
+    w: &mut W,
+    declaration: &XmlDeclaration,
+) -> Result<(), GapixError> {
     write!(w, "<?xml version=\"{}\"", declaration.version)?;
     if let Some(encoding) = &declaration.encoding {
         write!(w, " encoding=\"{}\"", encoding)?;
@@ -60,7 +71,7 @@ fn write_declaration_element<W: Write>(w: &mut W, declaration: &XmlDeclaration) 
     Ok(())
 }
 
-fn write_gpxinfo_element_open<W: Write>(w: &mut W, info: &Gpx) -> Result<()> {
+fn write_gpxinfo_element_open<W: Write>(w: &mut W, info: &Gpx) -> Result<(), GapixError> {
     writeln!(
         w,
         "<gpx creator=\"{}\" version=\"{}\"",
@@ -73,12 +84,12 @@ fn write_gpxinfo_element_open<W: Write>(w: &mut W, info: &Gpx) -> Result<()> {
     Ok(())
 }
 
-fn write_gpxinfo_element_close<W: Write>(w: &mut W) -> Result<()> {
+fn write_gpxinfo_element_close<W: Write>(w: &mut W) -> Result<(), GapixError> {
     writeln!(w, "</gpx>")?;
     Ok(())
 }
 
-fn write_metadata_element<W: Write>(w: &mut W, metadata: &Metadata) -> Result<()> {
+fn write_metadata_element<W: Write>(w: &mut W, metadata: &Metadata) -> Result<(), GapixError> {
     writeln!(w, "  <metadata>")?;
     for link in &metadata.links {
         write_link_element(w, link)?;
@@ -93,7 +104,7 @@ fn write_metadata_element<W: Write>(w: &mut W, metadata: &Metadata) -> Result<()
     Ok(())
 }
 
-fn write_link_element<W: Write>(w: &mut W, link: &Link) -> Result<()> {
+fn write_link_element<W: Write>(w: &mut W, link: &Link) -> Result<(), GapixError> {
     writeln!(w, "    <link href=\"{}\">", link.href)?;
     if let Some(text) = &link.text {
         writeln!(w, "      <text>{}</text>", text)?;
@@ -105,7 +116,7 @@ fn write_link_element<W: Write>(w: &mut W, link: &Link) -> Result<()> {
     Ok(())
 }
 
-fn write_track<W: Write>(w: &mut W, track: &Track) -> Result<()> {
+fn write_track<W: Write>(w: &mut W, track: &Track) -> Result<(), GapixError> {
     writeln!(w, "  <trk>")?;
     if let Some(track_name) = &track.name {
         writeln!(w, "    <name>{}</name>", track_name)?;
@@ -125,7 +136,7 @@ fn write_track<W: Write>(w: &mut W, track: &Track) -> Result<()> {
     Ok(())
 }
 
-fn write_track_segment<W: Write>(w: &mut W, segment: &TrackSegment) -> Result<()> {
+fn write_track_segment<W: Write>(w: &mut W, segment: &TrackSegment) -> Result<(), GapixError> {
     writeln!(w, "    <trkseg>")?;
     for p in &segment.points {
         write_trackpoint(w, p)?;
@@ -134,7 +145,7 @@ fn write_track_segment<W: Write>(w: &mut W, segment: &TrackSegment) -> Result<()
     Ok(())
 }
 
-fn write_trackpoint<W: Write>(w: &mut W, point: &Waypoint) -> Result<()> {
+fn write_trackpoint<W: Write>(w: &mut W, point: &Waypoint) -> Result<(), GapixError> {
     writeln!(
         w,
         "      <trkpt lat=\"{:.6}\" lon=\"{:.6}\">",
@@ -150,7 +161,7 @@ fn write_trackpoint<W: Write>(w: &mut W, point: &Waypoint) -> Result<()> {
     }
 
     if let Some(ext) = &point.extensions {
-        write_extensions(w, ext).context("Failed to write Garmin trackpoint extensions")?;
+        write_extensions(w, ext)?;
     }
 
     writeln!(w, "      </trkpt>")?;
@@ -158,7 +169,7 @@ fn write_trackpoint<W: Write>(w: &mut W, point: &Waypoint) -> Result<()> {
     Ok(())
 }
 
-fn write_extensions<W: Write>(_w: &mut W, _ext: &Extensions) -> Result<()> {
+fn write_extensions<W: Write>(_w: &mut W, _ext: &Extensions) -> Result<(), GapixError> {
     // TODO: Need to be careful of the namespace. Can get it from the GPX tag.
     Ok(())
 }

@@ -1,7 +1,6 @@
-use anyhow::Result;
 use quick_xml::events::BytesDecl;
 
-use crate::model::XmlDeclaration;
+use crate::{error::GapixError, model::XmlDeclaration};
 
 use super::XmlReaderConversions;
 
@@ -10,7 +9,7 @@ use super::XmlReaderConversions;
 pub(crate) fn parse_declaration<C: XmlReaderConversions>(
     declaration: &BytesDecl<'_>,
     converter: &C,
-) -> Result<XmlDeclaration> {
+) -> Result<XmlDeclaration, GapixError> {
     let version = converter.cow_to_string(declaration.version()?)?;
 
     let encoding = if let Some(enc) = declaration.encoding() {
@@ -42,9 +41,9 @@ mod tests {
     // This one is a bit different, returns a different type.
     fn start_parse_of_decl<'a>(
         xml_reader: &mut Reader<&'a [u8]>,
-    ) -> Result<quick_xml::events::BytesDecl<'a>> {
+    ) -> quick_xml::events::BytesDecl<'a> {
         match xml_reader.read_event().unwrap() {
-            Event::Decl(decl) => Ok(decl),
+            Event::Decl(decl) => decl,
             _ => panic!("Failed to parse Event::Decl(_) element"),
         }
     }
@@ -52,7 +51,7 @@ mod tests {
     #[test]
     fn valid_declaration() {
         let mut xml_reader = Reader::from_str(r#"<?xml version="1.0" encoding="UTF-8"?>"#);
-        let start = start_parse_of_decl(&mut xml_reader).unwrap();
+        let start = start_parse_of_decl(&mut xml_reader);
         let result = parse_declaration(&start, &xml_reader).unwrap();
         assert_eq!(result.version, "1.0");
         assert_eq!(result.encoding, Some("UTF-8".to_string()));
@@ -63,7 +62,7 @@ mod tests {
     fn valid_declaration_with_standalone() {
         let mut xml_reader =
             Reader::from_str(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>"#);
-        let start = start_parse_of_decl(&mut xml_reader).unwrap();
+        let start = start_parse_of_decl(&mut xml_reader);
         let result = parse_declaration(&start, &xml_reader).unwrap();
         assert_eq!(result.version, "1.0");
         assert_eq!(result.encoding, Some("UTF-8".to_string()));
@@ -73,7 +72,7 @@ mod tests {
     #[test]
     fn valid_declaration_missing_encoding() {
         let mut xml_reader = Reader::from_str(r#"<?xml version="1.0" ?>"#);
-        let start = start_parse_of_decl(&mut xml_reader).unwrap();
+        let start = start_parse_of_decl(&mut xml_reader);
         let result = parse_declaration(&start, &xml_reader).unwrap();
         assert_eq!(result.version, "1.0");
         assert_eq!(result.encoding, None);
@@ -83,7 +82,7 @@ mod tests {
     #[test]
     fn missing_version() {
         let mut xml_reader = Reader::from_str(r#"<?xml encoding="UTF-8"?>"#);
-        let start = start_parse_of_decl(&mut xml_reader).unwrap();
+        let start = start_parse_of_decl(&mut xml_reader);
         let result = parse_declaration(&start, &xml_reader);
         assert!(result.is_err());
     }
@@ -92,7 +91,7 @@ mod tests {
     #[test]
     fn extra_attributes() {
         let mut xml_reader = Reader::from_str(r#"<?xml version="1.0" foo="bar"?>"#);
-        let start = start_parse_of_decl(&mut xml_reader).unwrap();
+        let start = start_parse_of_decl(&mut xml_reader);
         let result = parse_declaration(&start, &xml_reader).unwrap();
         assert_eq!(result.version, "1.0");
         assert_eq!(result.encoding, None);

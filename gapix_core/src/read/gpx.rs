@@ -1,10 +1,9 @@
-use anyhow::{bail, Result};
 use quick_xml::{
     events::{BytesStart, Event},
     Reader,
 };
 
-use crate::model::Gpx;
+use crate::{error::GapixError, model::Gpx};
 
 use super::{
     attributes::Attributes, extensions::parse_extensions, metadata::parse_metadata,
@@ -15,7 +14,7 @@ use super::{
 pub(crate) fn parse_gpx(
     start_element: &BytesStart<'_>,
     xml_reader: &mut Reader<&[u8]>,
-) -> Result<Gpx> {
+) -> Result<Gpx, GapixError> {
     let mut attributes = Attributes::new(start_element, xml_reader)?;
 
     let mut gpx = Gpx {
@@ -48,16 +47,28 @@ pub(crate) fn parse_gpx(
                 }
                 _ => (),
             },
-            Ok(Event::End(e)) => match e.name().as_ref() {
-                b"gpx" => {
+            Ok(Event::End(e)) => {
+                let n = e.name();
+                let n = n.as_ref();
+
+                if n == start_element.name().as_ref() {
                     return Ok(gpx);
+                } else if n == b"metadata"
+                    || n == b"wpt"
+                    || n == b"rte"
+                    || n == b"trk"
+                    || n == b"extensions"
+                {
+                    // These are expected endings, do nothing.
+                } else {
+                    return Err(GapixError::bad_end(n, xml_reader));
                 }
-                _ => (),
-            },
-            Ok(Event::Eof) => {
-                bail!("Reached EOF unexpectedly. File is probably corrupt.");
             }
-            Err(e) => bail!("Error at position {}: {:?}", xml_reader.error_position(), e),
+            Ok(Event::Eof) => {
+                return Err(GapixError::UnexpectedEof);
+            }
+            Err(e) => return Err(e.into()),
+            //bail!("Error at position {}: {:?}", xml_reader.error_position(), e),
             _ => (),
         }
     }

@@ -1,67 +1,79 @@
-use anyhow::{bail, Result};
 use quick_xml::{
     events::{BytesStart, Event},
     Reader,
 };
 
-use crate::model::Metadata;
+use crate::{error::GapixError, model::Metadata};
 
 use super::{
-    bounds::parse_bounds, check_no_attributes, copyright::parse_copyright,
-    extensions::parse_extensions, link::parse_link, person::parse_person, XmlReaderConversions,
-    XmlReaderExtensions,
+    attributes::Attributes, bounds::parse_bounds, copyright::parse_copyright,
+    extensions::parse_extensions, link::parse_link, person::parse_person, XmlReaderExtensions,
 };
 
 pub(crate) fn parse_metadata(
     start_element: &BytesStart<'_>,
     xml_reader: &mut Reader<&[u8]>,
-) -> Result<Metadata> {
-    check_no_attributes(start_element, xml_reader)?;
+) -> Result<Metadata, GapixError> {
+    Attributes::check_is_empty(start_element, xml_reader)?;
 
-    let mut md = Metadata::default();
+    let mut metadata = Metadata::default();
 
     loop {
         match xml_reader.read_event() {
             Ok(Event::Start(start)) => match start.name().as_ref() {
                 b"name" => {
-                    md.name = Some(xml_reader.read_inner_as()?);
+                    metadata.name = Some(xml_reader.read_inner_as()?);
                 }
                 b"desc" => {
-                    md.description = Some(xml_reader.read_inner_as()?);
+                    metadata.description = Some(xml_reader.read_inner_as()?);
                 }
                 b"author" => {
-                    md.author = Some(parse_person(&start, xml_reader)?);
+                    metadata.author = Some(parse_person(&start, xml_reader)?);
                 }
                 b"copyright" => {
-                    md.copyright = Some(parse_copyright(&start, xml_reader)?);
+                    metadata.copyright = Some(parse_copyright(&start, xml_reader)?);
                 }
                 b"link" => {
                     let link = parse_link(&start, xml_reader)?;
-                    md.links.push(link);
+                    metadata.links.push(link);
                 }
                 b"time" => {
-                    md.time = Some(xml_reader.read_inner_as_time()?);
+                    metadata.time = Some(xml_reader.read_inner_as_time()?);
                 }
                 b"keywords" => {
-                    md.keywords = Some(xml_reader.read_inner_as()?);
+                    metadata.keywords = Some(xml_reader.read_inner_as()?);
                 }
                 b"bounds" => {
-                    md.bounds = Some(parse_bounds(&start, xml_reader)?);
+                    metadata.bounds = Some(parse_bounds(&start, xml_reader)?);
                 }
                 b"extensions" => {
-                    md.extensions = Some(parse_extensions(&start, xml_reader)?);
+                    metadata.extensions = Some(parse_extensions(&start, xml_reader)?);
                 }
-                e => bail!("Unexpected Start element {:?}", xml_reader.bytes_to_cow(e)),
+                e => return Err(GapixError::bad_start(e, xml_reader)),
             },
-            Ok(Event::End(e)) => match e.name().as_ref() {
-                b"metadata" => {
-                    return Ok(md);
+            Ok(Event::End(e)) => {
+                let n = e.name();
+                let n = n.as_ref();
+                if n == start_element.name().as_ref() {
+                    return Ok(metadata);
+                } else if n == b"name"
+                    || n == b"desc"
+                    || n == b"author"
+                    || n == b"copyright"
+                    || n == b"link"
+                    || n == b"time"
+                    || n == b"keywords"
+                    || n == b"bounds"
+                    || n == b"extensions"
+                {
+                    // These are expected endings, do nothing.
+                } else {
+                    return Err(GapixError::bad_end(n, xml_reader));
                 }
-                _ => {}
-            },
+            }
             // Ignore spurious Event::Text, I think they are newlines.
             Ok(Event::Text(_)) => {}
-            e => bail!("Unexpected element {:?}", e),
+            e => return Err(GapixError::bad_event(e)),
         }
     }
 }
@@ -105,7 +117,7 @@ mod tests {
                </metadata>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_metadata(&start, &mut xml_reader).unwrap();
         assert_eq!(result.name, Some("Homer Simpson".to_string()));
         assert_eq!(result.description, Some("description".to_string()));
@@ -142,7 +154,7 @@ mod tests {
                </metadata>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_metadata(&start, &mut xml_reader);
         assert!(result.is_err());
     }
@@ -154,7 +166,7 @@ mod tests {
                </metadata>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_metadata(&start, &mut xml_reader);
         assert!(result.is_err());
     }

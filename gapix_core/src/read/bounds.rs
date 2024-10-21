@@ -1,14 +1,13 @@
-use anyhow::{bail, Result};
 use quick_xml::events::BytesStart;
 
-use crate::model::Bounds;
+use crate::{error::GapixError, model::Bounds};
 
 use super::{attributes::Attributes, XmlReaderConversions};
 
 pub(crate) fn parse_bounds<C: XmlReaderConversions>(
     start_element: &BytesStart<'_>,
     converter: &C,
-) -> Result<Bounds> {
+) -> Result<Bounds, GapixError> {
     let mut attributes = Attributes::new(start_element, converter)?;
     let bounds = Bounds {
         min_lat: attributes.get("minlat")?,
@@ -16,10 +15,7 @@ pub(crate) fn parse_bounds<C: XmlReaderConversions>(
         max_lat: attributes.get("maxlat")?,
         max_lon: attributes.get("maxlon")?,
     };
-    if !attributes.is_empty() {
-        bail!("Found extra attributes on 'bounds' element");
-    }
-
+    attributes.check_is_empty_now()?;
     Ok(bounds)
 }
 
@@ -34,7 +30,7 @@ mod tests {
         let mut xml_reader = Reader::from_str(
             r#"<bounds minlat="-1.1" maxlat="1.1" minlon="-53.1111" maxlon="88.88">"#,
         );
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_bounds(&start, &xml_reader).unwrap();
         assert_eq!(result.min_lat, -1.1);
         assert_eq!(result.max_lat, 1.1);
@@ -46,7 +42,7 @@ mod tests {
     fn missing_min_lat() {
         let mut xml_reader =
             Reader::from_str(r#"<bounds maxlat="1.1" minlon="-53.1111" maxlon="88.88">"#);
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_bounds(&start, &xml_reader);
         assert!(result.is_err());
     }
@@ -55,7 +51,7 @@ mod tests {
     fn missing_max_lat() {
         let mut xml_reader =
             Reader::from_str(r#"<bounds minlat="-1.1" minlon="-53.1111" maxlon="88.88">"#);
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_bounds(&start, &xml_reader);
         assert!(result.is_err());
     }
@@ -64,7 +60,7 @@ mod tests {
     fn missing_min_lon() {
         let mut xml_reader =
             Reader::from_str(r#"<bounds minlat="-1.1" maxlat="1.1" maxlon="88.88">"#);
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_bounds(&start, &xml_reader);
         assert!(result.is_err());
     }
@@ -73,7 +69,7 @@ mod tests {
     fn missing_max_lon() {
         let mut xml_reader =
             Reader::from_str(r#"<bounds minlat="-1.1" maxlat="1.1" minlon="-53.1111">"#);
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_bounds(&start, &xml_reader);
         assert!(result.is_err());
     }
@@ -81,7 +77,7 @@ mod tests {
     #[test]
     fn missing_all() {
         let mut xml_reader = Reader::from_str(r#"<bounds>"#);
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_bounds(&start, &xml_reader);
         assert!(result.is_err());
     }
@@ -90,7 +86,7 @@ mod tests {
     fn extras() {
         let mut xml_reader =
             Reader::from_str(r#"<bounds maxlat="1.1" minlon="-53.1111" maxlon="88.88" foo="bar">"#);
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_bounds(&start, &xml_reader);
         assert!(result.is_err());
     }

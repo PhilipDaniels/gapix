@@ -345,13 +345,13 @@ dependencies = [
 name = "gapix_core"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "env_logger",
  "geo",
  "log",
  "logging_timer",
  "quick-xml",
  "rust_xlsxwriter",
+ "thiserror",
  "time",
 ]
 

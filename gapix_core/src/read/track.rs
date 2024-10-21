@@ -1,21 +1,20 @@
-use anyhow::{bail, Result};
 use quick_xml::{
     events::{BytesStart, Event},
     Reader,
 };
 
-use crate::model::Track;
+use crate::{error::GapixError, model::Track};
 
 use super::{
-    check_no_attributes, extensions::parse_extensions, link::parse_link,
-    track_segment::parse_track_segment, XmlReaderConversions, XmlReaderExtensions,
+    attributes::Attributes, extensions::parse_extensions, link::parse_link,
+    track_segment::parse_track_segment, XmlReaderExtensions,
 };
 
 pub(crate) fn parse_track(
     start_element: &BytesStart<'_>,
     xml_reader: &mut Reader<&[u8]>,
-) -> Result<Track> {
-    check_no_attributes(start_element, xml_reader)?;
+) -> Result<Track, GapixError> {
+    Attributes::check_is_empty(start_element, xml_reader)?;
 
     let mut track = Track::default();
 
@@ -52,22 +51,31 @@ pub(crate) fn parse_track(
                         .segments
                         .push(parse_track_segment(&start, xml_reader)?);
                 }
-                e => bail!("Unexpected Start element {:?}", xml_reader.bytes_to_cow(e)),
+                e => return Err(GapixError::bad_start(e, xml_reader)),
             },
             Ok(Event::End(e)) => {
                 let n = e.name();
                 let n = n.as_ref();
                 if n == start_element.name().as_ref() {
                     return Ok(track);
-                } else if n == b"name" || n == b"cmt" {
-                    // These are expected endings.
+                } else if n == b"name"
+                    || n == b"cmt"
+                    || n == b"desc"
+                    || n == b"src"
+                    || n == b"link"
+                    || n == b"number"
+                    || n == b"type"
+                    || n == b"extensions"
+                    || n == b"trkseg"
+                {
+                    // These are expected endings, do nothing.
                 } else {
-                    // Unexpected ending.
+                    return Err(GapixError::bad_end(n, xml_reader));
                 }
             }
             // Ignore spurious Event::Text, I think they are newlines.
             Ok(Event::Text(_)) => {}
-            e => bail!("Unexpected element {:?}", e),
+            e => return Err(GapixError::bad_event(e)),
         }
     }
 }
@@ -110,7 +118,7 @@ mod tests {
                </trk>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_track(&start, &mut xml_reader).unwrap();
         assert_eq!(result.name, Some("Route name".to_string()));
         assert_eq!(result.comment, Some("Route comment".to_string()));
@@ -134,7 +142,7 @@ mod tests {
                </trk>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_track(&start, &mut xml_reader);
         assert!(result.is_err());
     }
@@ -146,7 +154,7 @@ mod tests {
                </trk>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_track(&start, &mut xml_reader);
         assert!(result.is_err());
     }

@@ -5,7 +5,6 @@ use std::{
     path::Path,
 };
 
-use anyhow::{Context, Result};
 use log::info;
 use logging_timer::time;
 use rust_xlsxwriter::{
@@ -16,6 +15,7 @@ use time::{Duration, OffsetDateTime};
 
 use crate::{
     byte_counter::ByteCounter,
+    error::GapixError,
     formatting::to_local_date,
     model::{EnrichedGpx, EnrichedTrackPoint},
     stage::{StageList, StageType},
@@ -51,7 +51,7 @@ pub fn create_summary_xlsx(
     trackpoint_hyperlinks: Hyperlink,
     gpx: &EnrichedGpx,
     stages: &StageList,
-) -> Result<Workbook> {
+) -> Result<Workbook, GapixError> {
     let mut workbook = Workbook::new();
 
     // This will appear as the first sheet in the workbook.
@@ -74,10 +74,21 @@ pub fn create_summary_xlsx(
 
 /// Writes the summary workbook to a file. The file will be overwritten if it
 /// already exists.
-pub fn write_summary_to_file<P: AsRef<Path>>(filename: P, workbook: Workbook) -> Result<()> {
+pub fn write_summary_to_file<P: AsRef<Path>>(
+    filename: P,
+    workbook: Workbook,
+) -> Result<(), GapixError> {
     let filename = filename.as_ref();
-    let file =
-        File::create(filename).with_context(|| format!("Failed to create {:?}", filename))?;
+    let file = match File::create(filename) {
+        Ok(f) => f,
+        Err(err) => {
+            return Err(GapixError::CreateFile {
+                path: filename.to_owned(),
+                source: err,
+            })
+        }
+    };
+
     let mut writer = ByteCounter::new(BufWriter::new(file));
     write_summary_to_writer(&mut writer, workbook)?;
 
@@ -91,7 +102,7 @@ pub fn write_summary_to_file<P: AsRef<Path>>(filename: P, workbook: Workbook) ->
 
 /// Writes the summary workbook to a writer.
 #[time]
-pub fn write_summary_to_writer<W>(writer: &mut W, mut workbook: Workbook) -> Result<()>
+pub fn write_summary_to_writer<W>(writer: &mut W, mut workbook: Workbook) -> Result<(), GapixError>
 where
     W: Write + Seek + Send,
 {
@@ -110,7 +121,11 @@ where
 /// are optional on the Track Points tab because there are thousands of them and
 /// they really slow down Calc.
 #[time]
-fn write_stages(ws: &mut Worksheet, gpx: &EnrichedGpx, stages: &StageList) -> Result<()> {
+fn write_stages(
+    ws: &mut Worksheet,
+    gpx: &EnrichedGpx,
+    stages: &StageList,
+) -> Result<(), GapixError> {
     let mut fc = FormatControl::new();
 
     if stages.is_empty() {
@@ -145,7 +160,7 @@ fn output_stage_number(
     ws: &mut Worksheet,
     fc: &mut FormatControl,
     stages: &StageList,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "", &["Stage"])?;
 
     for _ in stages {
@@ -157,7 +172,11 @@ fn output_stage_number(
     Ok(())
 }
 
-fn output_stage_type(ws: &mut Worksheet, fc: &mut FormatControl, stages: &StageList) -> Result<()> {
+fn output_stage_type(
+    ws: &mut Worksheet,
+    fc: &mut FormatControl,
+    stages: &StageList,
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "", &["Type"])?;
 
     for stage in stages {
@@ -173,7 +192,7 @@ fn output_stage_location(
     ws: &mut Worksheet,
     fc: &mut FormatControl,
     stages: &StageList,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_headers(
         ws,
         fc,
@@ -204,7 +223,11 @@ fn output_stage_location(
     Ok(())
 }
 
-fn output_start_time(ws: &mut Worksheet, fc: &mut FormatControl, stages: &StageList) -> Result<()> {
+fn output_start_time(
+    ws: &mut Worksheet,
+    fc: &mut FormatControl,
+    stages: &StageList,
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "Start Time", &["UTC", "Local"])?;
     ws.set_column_width(fc.col, DATE_COLUMN_WIDTH)?;
     ws.set_column_width(fc.col + 1, DATE_COLUMN_WIDTH)?;
@@ -232,7 +255,11 @@ fn output_start_time(ws: &mut Worksheet, fc: &mut FormatControl, stages: &StageL
     Ok(())
 }
 
-fn output_end_time(ws: &mut Worksheet, fc: &mut FormatControl, stages: &StageList) -> Result<()> {
+fn output_end_time(
+    ws: &mut Worksheet,
+    fc: &mut FormatControl,
+    stages: &StageList,
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "End Time", &["UTC", "Local"])?;
     ws.set_column_width(fc.col, DATE_COLUMN_WIDTH)?;
     ws.set_column_width(fc.col + 1, DATE_COLUMN_WIDTH)?;
@@ -260,7 +287,11 @@ fn output_end_time(ws: &mut Worksheet, fc: &mut FormatControl, stages: &StageLis
     Ok(())
 }
 
-fn output_duration(ws: &mut Worksheet, fc: &mut FormatControl, stages: &StageList) -> Result<()> {
+fn output_duration(
+    ws: &mut Worksheet,
+    fc: &mut FormatControl,
+    stages: &StageList,
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "Duration", &["hms", "Running"])?;
     ws.set_column_width(fc.col, DURATION_COLUMN_WIDTH)?;
     ws.set_column_width(fc.col + 1, DURATION_COLUMN_WIDTH)?;
@@ -291,7 +322,11 @@ fn output_duration(ws: &mut Worksheet, fc: &mut FormatControl, stages: &StageLis
     Ok(())
 }
 
-fn output_distance(ws: &mut Worksheet, fc: &mut FormatControl, stages: &StageList) -> Result<()> {
+fn output_distance(
+    ws: &mut Worksheet,
+    fc: &mut FormatControl,
+    stages: &StageList,
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "Distance (km)", &["Stage", "Running"])?;
     ws.set_column_width(fc.col, KILOMETRES_COLUMN_WIDTH)?;
     ws.set_column_width(fc.col + 1, METRES_COLUMN_WIDTH)?;
@@ -320,7 +355,7 @@ fn output_average_speed(
     ws: &mut Worksheet,
     fc: &mut FormatControl,
     stages: &StageList,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "Avg Speed (km/h)", &["Stage", "Running"])?;
     ws.set_column_width(fc.col, SPEED_COLUMN_WIDTH)?;
     ws.set_column_width(fc.col + 1, SPEED_COLUMN_WIDTH)?;
@@ -347,7 +382,11 @@ fn output_average_speed(
     Ok(())
 }
 
-fn output_ascent(ws: &mut Worksheet, fc: &mut FormatControl, stages: &StageList) -> Result<()> {
+fn output_ascent(
+    ws: &mut Worksheet,
+    fc: &mut FormatControl,
+    stages: &StageList,
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "Ascent (m)", &["Stage", "Running", "m/km"])?;
     ws.set_column_width(fc.col, METRES_COLUMN_WIDTH)?;
     ws.set_column_width(fc.col + 1, METRES_COLUMN_WIDTH)?;
@@ -379,7 +418,11 @@ fn output_ascent(ws: &mut Worksheet, fc: &mut FormatControl, stages: &StageList)
     Ok(())
 }
 
-fn output_descent(ws: &mut Worksheet, fc: &mut FormatControl, stages: &StageList) -> Result<()> {
+fn output_descent(
+    ws: &mut Worksheet,
+    fc: &mut FormatControl,
+    stages: &StageList,
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "Descent (m)", &["Stage", "Running", "m/km"])?;
     ws.set_column_width(fc.col, METRES_COLUMN_WIDTH)?;
     ws.set_column_width(fc.col + 1, METRES_COLUMN_WIDTH)?;
@@ -415,7 +458,7 @@ fn output_min_elevation(
     ws: &mut Worksheet,
     fc: &mut FormatControl,
     stages: &StageList,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_headers(
         ws,
         fc,
@@ -448,7 +491,7 @@ fn output_max_elevation(
     ws: &mut Worksheet,
     fc: &mut FormatControl,
     stages: &StageList,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_headers(
         ws,
         fc,
@@ -477,7 +520,11 @@ fn output_max_elevation(
     Ok(())
 }
 
-fn output_max_speed(ws: &mut Worksheet, fc: &mut FormatControl, stages: &StageList) -> Result<()> {
+fn output_max_speed(
+    ws: &mut Worksheet,
+    fc: &mut FormatControl,
+    stages: &StageList,
+) -> Result<(), GapixError> {
     write_headers(
         ws,
         fc,
@@ -511,7 +558,7 @@ fn output_heart_rate(
     fc: &mut FormatControl,
     stages: &StageList,
     avg_heart_rate: Option<f64>,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_headers(
         ws,
         fc,
@@ -537,7 +584,7 @@ fn output_temperature(
     fc: &mut FormatControl,
     stages: &StageList,
     avg_temp: Option<f64>,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_headers(
         ws,
         fc,
@@ -584,7 +631,7 @@ fn output_track_points(
     ws: &mut Worksheet,
     fc: &mut FormatControl,
     stages: &StageList,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "Track Points", &["First", "Last", "Count"])?;
 
     for stage in stages {
@@ -615,7 +662,7 @@ fn write_trackpoints(
     points: &[EnrichedTrackPoint],
     hyperlink: Hyperlink,
     mandatory_hyperlinks: &HashSet<usize>,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     let mut fc = FormatControl::new();
 
     ws.set_freeze_panes(2, 0)?;
@@ -638,7 +685,7 @@ fn output_tp_index(
     ws: &mut Worksheet,
     fc: &mut FormatControl,
     points: &[EnrichedTrackPoint],
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "", &["Index"])?;
 
     for p in points {
@@ -654,7 +701,7 @@ fn output_tp_time(
     ws: &mut Worksheet,
     fc: &mut FormatControl,
     points: &[EnrichedTrackPoint],
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "Time", &["UTC", "Local", "Delta", "Running"])?;
     ws.set_column_width(fc.col, DATE_COLUMN_WIDTH)?;
     ws.set_column_width(fc.col + 1, DATE_COLUMN_WIDTH)?;
@@ -688,7 +735,7 @@ fn output_tp_location(
     points: &[EnrichedTrackPoint],
     hyperlink: Hyperlink,
     mandatory_hyperlinks: &HashSet<usize>,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "Location", &["Lat", "Lon", "Map", "Description"])?;
     ws.set_column_width(fc.col, LAT_LON_COLUMN_WIDTH)?;
     ws.set_column_width(fc.col + 1, LAT_LON_COLUMN_WIDTH)?;
@@ -720,7 +767,7 @@ fn output_tp_elevation(
     ws: &mut Worksheet,
     fc: &mut FormatControl,
     points: &[EnrichedTrackPoint],
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_headers(
         ws,
         fc,
@@ -756,7 +803,7 @@ fn output_tp_distance(
     ws: &mut Worksheet,
     fc: &mut FormatControl,
     points: &[EnrichedTrackPoint],
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "Distance", &["Delta (m)", "Running (km)"])?;
     ws.set_column_width(fc.col, METRES_COLUMN_WIDTH_WITH_UNITS)?;
     ws.set_column_width(fc.col + 1, KILOMETRES_COLUMN_WIDTH_WITH_UNITS)?;
@@ -775,7 +822,7 @@ fn output_tp_speed(
     ws: &mut Worksheet,
     fc: &mut FormatControl,
     points: &[EnrichedTrackPoint],
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "", &["Speed (km/h)"])?;
     ws.set_column_width(fc.col, SPEED_COLUMN_WIDTH_WITH_UNITS)?;
 
@@ -792,7 +839,7 @@ fn output_tp_heart_rate(
     ws: &mut Worksheet,
     fc: &mut FormatControl,
     points: &[EnrichedTrackPoint],
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "", &["Heart Rate (bpm)"])?;
     ws.set_column_width(fc.col, HEART_RATE_WIDTH_WITH_UNITS)?;
 
@@ -814,7 +861,7 @@ fn output_tp_air_temp(
     ws: &mut Worksheet,
     fc: &mut FormatControl,
     points: &[EnrichedTrackPoint],
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "", &["Temp (°C)"])?;
     ws.set_column_width(fc.col, TEMPERATURE_COLUMN_WIDTH_WITH_UNITS)?;
 
@@ -831,7 +878,7 @@ fn output_tp_cadence(
     ws: &mut Worksheet,
     fc: &mut FormatControl,
     points: &[EnrichedTrackPoint],
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_headers(ws, fc, "", &["Cadence (rpm)"])?;
     ws.set_column_width(fc.col, CADENCE_COLUMN_WIDTH_WITH_UNITS)?;
 
@@ -858,7 +905,7 @@ fn write_headers(
     fc: &FormatControl,
     main_heading: &str,
     sub_headings: &[&str],
-) -> Result<()> {
+) -> Result<(), GapixError> {
     if main_heading.is_empty() {
         ws.write_blank(0, fc.col, &fc.minor_header_format())?;
     } else {
@@ -888,7 +935,7 @@ fn write_lat_lon(
     (lat, lon): (f64, f64),
     hyperlink: Hyperlink,
     location: Option<&String>,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     let format = fc.lat_lon_format().set_font_color(Color::Black);
 
     ws.write_number_with_format(fc.row, fc.col, lat, &format)?;
@@ -921,14 +968,14 @@ fn write_lat_lon(
 }
 
 /// Writes an integer.
-fn write_integer(ws: &mut Worksheet, fc: &FormatControl, value: u32) -> Result<()> {
+fn write_integer(ws: &mut Worksheet, fc: &FormatControl, value: u32) -> Result<(), GapixError> {
     ws.write_number_with_format(fc.row, fc.col, value, &fc.integer_format())?;
     Ok(())
 }
 
 /// Writes a blank into a cell. We often want to do this when there is no data
 /// so that banding formatting is applied to the cell.
-fn write_blank(ws: &mut Worksheet, fc: &FormatControl) -> Result<()> {
+fn write_blank(ws: &mut Worksheet, fc: &FormatControl) -> Result<(), GapixError> {
     ws.write_blank(fc.row, fc.col, &fc.string_format())?;
     Ok(())
 }
@@ -938,7 +985,7 @@ fn write_elevation_data(
     ws: &mut Worksheet,
     fc: &FormatControl,
     point: Option<&EnrichedTrackPoint>,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     if point.is_none() {
         write_blank(ws, fc)?;
         write_blank(ws, &fc.col_offset(1))?;
@@ -946,7 +993,7 @@ fn write_elevation_data(
         return Ok(());
     }
 
-    let point = point.context("Point should exist, we just checked for is_none() above")?;
+    let point = point.expect("Point should exist, we just checked for is_none() above");
 
     match point.ele {
         Some(ele) => {
@@ -963,26 +1010,34 @@ fn write_elevation_data(
 }
 
 /// Writes a string right aligned.
-fn write_string(ws: &mut Worksheet, fc: &FormatControl, value: &str) -> Result<()> {
+fn write_string(ws: &mut Worksheet, fc: &FormatControl, value: &str) -> Result<(), GapixError> {
     ws.write_string_with_format(fc.row, fc.col, value, &fc.string_format())?;
     Ok(())
 }
 
 /// Writes a string right aligned and bold.
-fn write_string_bold(ws: &mut Worksheet, fc: &FormatControl, value: &str) -> Result<()> {
+fn write_string_bold(
+    ws: &mut Worksheet,
+    fc: &FormatControl,
+    value: &str,
+) -> Result<(), GapixError> {
     let format = fc.string_format().set_bold();
     ws.write_string_with_format(fc.row, fc.col, value, &format)?;
     Ok(())
 }
 
 /// Writes a float.
-fn write_f64(ws: &mut Worksheet, fc: &FormatControl, value: f64) -> Result<()> {
+fn write_f64(ws: &mut Worksheet, fc: &FormatControl, value: f64) -> Result<(), GapixError> {
     ws.write_number_with_format(fc.row, fc.col, value, &fc.float_format())?;
     Ok(())
 }
 
 /// Writes an optional float.
-fn write_f64_option(ws: &mut Worksheet, fc: &FormatControl, value: Option<f64>) -> Result<()> {
+fn write_f64_option(
+    ws: &mut Worksheet,
+    fc: &FormatControl,
+    value: Option<f64>,
+) -> Result<(), GapixError> {
     if let Some(value) = value {
         write_f64(ws, fc, value)?;
     } else {
@@ -991,7 +1046,7 @@ fn write_f64_option(ws: &mut Worksheet, fc: &FormatControl, value: Option<f64>) 
     Ok(())
 }
 
-fn write_percentage(ws: &mut Worksheet, fc: &FormatControl, value: f64) -> Result<()> {
+fn write_percentage(ws: &mut Worksheet, fc: &FormatControl, value: f64) -> Result<(), GapixError> {
     ws.write_number_with_format(fc.row, fc.col, value, &fc.percentage_format())?;
     Ok(())
 }
@@ -1000,7 +1055,7 @@ fn write_percentage_option(
     ws: &mut Worksheet,
     fc: &FormatControl,
     value: Option<f64>,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     if let Some(value) = value {
         write_percentage(ws, fc, value)?;
     } else {
@@ -1011,7 +1066,11 @@ fn write_percentage_option(
 
 /// Formats 'utc_date' into a string like "2024-09-01T05:10:44Z".
 /// This is the format that GPX files contain.
-fn write_utc_date(ws: &mut Worksheet, fc: &FormatControl, utc_date: OffsetDateTime) -> Result<()> {
+fn write_utc_date(
+    ws: &mut Worksheet,
+    fc: &FormatControl,
+    utc_date: OffsetDateTime,
+) -> Result<(), GapixError> {
     assert!(utc_date.offset().is_utc());
     let excel_date = date_to_excel_date(utc_date)?;
     ws.write_with_format(fc.row, fc.col, &excel_date, &fc.utc_date_format())?;
@@ -1022,7 +1081,7 @@ fn write_utc_date_option(
     ws: &mut Worksheet,
     fc: &FormatControl,
     utc_date: Option<OffsetDateTime>,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     if let Some(d) = utc_date {
         write_utc_date(ws, fc, d)?;
     } else {
@@ -1037,7 +1096,7 @@ fn write_utc_date_as_local(
     ws: &mut Worksheet,
     fc: &FormatControl,
     utc_date: OffsetDateTime,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     assert!(utc_date.offset().is_utc());
     let excel_date = date_to_excel_date(to_local_date(utc_date)?)?;
     ws.write_with_format(fc.row, fc.col, &excel_date, &fc.local_date_format())?;
@@ -1048,7 +1107,7 @@ fn write_utc_date_as_local_option(
     ws: &mut Worksheet,
     fc: &FormatControl,
     utc_date: Option<OffsetDateTime>,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     if let Some(d) = utc_date {
         write_utc_date_as_local(ws, fc, d)?;
     } else {
@@ -1057,7 +1116,7 @@ fn write_utc_date_as_local_option(
     Ok(())
 }
 
-fn date_to_excel_date(date: OffsetDateTime) -> Result<ExcelDateTime> {
+fn date_to_excel_date(date: OffsetDateTime) -> Result<ExcelDateTime, GapixError> {
     let excel_date =
         ExcelDateTime::from_ymd(date.year().try_into()?, date.month().into(), date.day())?;
 
@@ -1084,7 +1143,11 @@ fn date_to_excel_date(date: OffsetDateTime) -> Result<ExcelDateTime> {
     Ok(excel_date.and_hms(hour, minute, second)?)
 }
 
-fn write_duration(ws: &mut Worksheet, fc: &FormatControl, duration: Duration) -> Result<()> {
+fn write_duration(
+    ws: &mut Worksheet,
+    fc: &FormatControl,
+    duration: Duration,
+) -> Result<(), GapixError> {
     let excel_duration = duration_to_excel_date(duration)?;
     ws.write_with_format(fc.row, fc.col, excel_duration, &fc.duration_format())?;
     Ok(())
@@ -1094,7 +1157,7 @@ fn write_duration_option(
     ws: &mut Worksheet,
     fc: &FormatControl,
     duration: Option<Duration>,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     if let Some(dur) = duration {
         write_duration(ws, fc, dur)?;
     } else {
@@ -1104,7 +1167,7 @@ fn write_duration_option(
     Ok(())
 }
 
-fn duration_to_excel_date(duration: Duration) -> Result<ExcelDateTime> {
+fn duration_to_excel_date(duration: Duration) -> Result<ExcelDateTime, GapixError> {
     const SECONDS_PER_MINUTE: u32 = 60;
     const SECONDS_PER_HOUR: u32 = SECONDS_PER_MINUTE * 60;
 
@@ -1125,7 +1188,7 @@ fn write_max_speed_data(
     ws: &mut Worksheet,
     fc: &FormatControl,
     point: Option<&EnrichedTrackPoint>,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     if point.is_none() {
         write_blank(ws, fc)?;
         write_blank(ws, &fc.col_offset(1))?;
@@ -1133,7 +1196,7 @@ fn write_max_speed_data(
         return Ok(());
     }
 
-    let point = point.context("Point should exist, we just checked for is_none() above")?;
+    let point = point.expect("Point should exist, we just checked for is_none() above");
 
     write_speed_option(ws, fc, point.speed_kmh)?;
     write_kilometres_running_with_map_hyperlink(ws, &fc.col_offset(1), point)?;
@@ -1146,7 +1209,7 @@ fn write_heart_rate_data(
     fc: &FormatControl,
     max_hr_point: Option<&EnrichedTrackPoint>,
     avg_hr: Option<f64>,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_f64_option(ws, fc, avg_hr)?;
 
     if let Some(point) = max_hr_point {
@@ -1170,7 +1233,7 @@ fn write_temperature_data(
     min: Option<&EnrichedTrackPoint>,
     max: Option<&EnrichedTrackPoint>,
     avg: Option<f64>,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     write_f64_option(ws, fc, avg)?;
 
     if let Some(min) = min {
@@ -1196,7 +1259,11 @@ fn write_temperature_data(
     Ok(())
 }
 
-fn write_temperature(ws: &mut Worksheet, fc: &FormatControl, temperature: f64) -> Result<()> {
+fn write_temperature(
+    ws: &mut Worksheet,
+    fc: &FormatControl,
+    temperature: f64,
+) -> Result<(), GapixError> {
     let format = fc.temperature_format();
     ws.write_number_with_format(fc.row, fc.col, temperature, &format)?;
     Ok(())
@@ -1206,7 +1273,7 @@ fn write_temperature_option(
     ws: &mut Worksheet,
     fc: &FormatControl,
     temperature: Option<f64>,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     if let Some(t) = temperature {
         write_temperature(ws, fc, t)?;
     } else {
@@ -1234,7 +1301,7 @@ fn write_trackpoint_number(
     ws: &mut Worksheet,
     fc: &FormatControl,
     trackpoint_index: usize,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     let format = fc
         .integer_format()
         .set_font_color(Color::Black)
@@ -1250,13 +1317,17 @@ fn write_trackpoint_number(
     Ok(())
 }
 
-fn write_metres(ws: &mut Worksheet, fc: &FormatControl, metres: f64) -> Result<()> {
+fn write_metres(ws: &mut Worksheet, fc: &FormatControl, metres: f64) -> Result<(), GapixError> {
     ws.write_number_with_format(fc.row, fc.col, metres, &fc.metres_format())?;
     // TODO: Use conditional formatting to indicate negatives?
     Ok(())
 }
 
-fn write_metres_option(ws: &mut Worksheet, fc: &FormatControl, metres: Option<f64>) -> Result<()> {
+fn write_metres_option(
+    ws: &mut Worksheet,
+    fc: &FormatControl,
+    metres: Option<f64>,
+) -> Result<(), GapixError> {
     if let Some(m) = metres {
         write_metres(ws, fc, m)?;
     } else {
@@ -1265,7 +1336,11 @@ fn write_metres_option(ws: &mut Worksheet, fc: &FormatControl, metres: Option<f6
     Ok(())
 }
 
-fn write_kilometres(ws: &mut Worksheet, fc: &FormatControl, kilometres: f64) -> Result<()> {
+fn write_kilometres(
+    ws: &mut Worksheet,
+    fc: &FormatControl,
+    kilometres: f64,
+) -> Result<(), GapixError> {
     ws.write_number_with_format(fc.row, fc.col, kilometres, &fc.kilometres_format())?;
     Ok(())
 }
@@ -1274,7 +1349,7 @@ fn write_kilometres_running_with_map_hyperlink(
     ws: &mut Worksheet,
     fc: &FormatControl,
     point: &EnrichedTrackPoint,
-) -> Result<()> {
+) -> Result<(), GapixError> {
     let km = point.running_metres / 1000.0;
     let url = make_hyperlink_with_text((point.lat, point.lon), &format!("{:.3}", km));
     let format = fc.kilometres_format();
@@ -1283,12 +1358,16 @@ fn write_kilometres_running_with_map_hyperlink(
     Ok(())
 }
 
-fn write_speed(ws: &mut Worksheet, fc: &FormatControl, speed: f64) -> Result<()> {
+fn write_speed(ws: &mut Worksheet, fc: &FormatControl, speed: f64) -> Result<(), GapixError> {
     ws.write_number_with_format(fc.row, fc.col, speed, &fc.speed_format())?;
     Ok(())
 }
 
-fn write_speed_option(ws: &mut Worksheet, fc: &FormatControl, speed: Option<f64>) -> Result<()> {
+fn write_speed_option(
+    ws: &mut Worksheet,
+    fc: &FormatControl,
+    speed: Option<f64>,
+) -> Result<(), GapixError> {
     if let Some(s) = speed {
         write_speed(ws, fc, s)?;
     } else {

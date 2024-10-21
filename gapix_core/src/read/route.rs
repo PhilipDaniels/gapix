@@ -1,21 +1,20 @@
-use anyhow::{bail, Result};
 use quick_xml::{
     events::{BytesStart, Event},
     Reader,
 };
 
-use crate::model::Route;
+use crate::{error::GapixError, model::Route};
 
 use super::{
-    check_no_attributes, extensions::parse_extensions, link::parse_link, waypoint::parse_waypoint,
-    XmlReaderConversions, XmlReaderExtensions,
+    attributes::Attributes, extensions::parse_extensions, link::parse_link,
+    waypoint::parse_waypoint, XmlReaderExtensions,
 };
 
 pub(crate) fn parse_route(
     start_element: &BytesStart<'_>,
     xml_reader: &mut Reader<&[u8]>,
-) -> Result<Route> {
-    check_no_attributes(start_element, xml_reader)?;
+) -> Result<Route, GapixError> {
+    Attributes::check_is_empty(start_element, xml_reader)?;
 
     let mut route = Route::default();
 
@@ -51,17 +50,31 @@ pub(crate) fn parse_route(
                     let point = parse_waypoint(&start, xml_reader)?;
                     route.points.push(point);
                 }
-                e => bail!("Unexpected Start element {:?}", xml_reader.bytes_to_cow(e)),
+                e => return Err(GapixError::bad_start(e, xml_reader)),
             },
-            Ok(Event::End(e)) => match e.name().as_ref() {
-                b"rte" => {
+            Ok(Event::End(e)) => {
+                let n = e.name();
+                let n = n.as_ref();
+                if n == start_element.name().as_ref() {
                     return Ok(route);
+                } else if n == b"name"
+                    || n == b"cmt"
+                    || n == b"desc"
+                    || n == b"src"
+                    || n == b"link"
+                    || n == b"number"
+                    || n == b"type"
+                    || n == b"extensions"
+                    || n == b"rtept"
+                {
+                    // These are expected endings, do nothing.
+                } else {
+                    return Err(GapixError::bad_end(n, xml_reader));
                 }
-                _ => {}
-            },
+            }
             // Ignore spurious Event::Text, I think they are newlines.
             Ok(Event::Text(_)) => {}
-            e => bail!("Unexpected element {:?}", e),
+            e => return Err(GapixError::bad_event(e)),
         }
     }
 }
@@ -94,7 +107,7 @@ mod tests {
                </rte>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_route(&start, &mut xml_reader).unwrap();
         assert_eq!(result.name, Some("Route name".to_string()));
         assert_eq!(result.comment, Some("Route comment".to_string()));
@@ -117,7 +130,7 @@ mod tests {
                </rte>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_route(&start, &mut xml_reader);
         assert!(result.is_err());
     }
@@ -129,7 +142,7 @@ mod tests {
                </rte>"#,
         );
 
-        let start = start_parse(&mut xml_reader).unwrap();
+        let start = start_parse(&mut xml_reader);
         let result = parse_route(&start, &mut xml_reader);
         assert!(result.is_err());
     }
