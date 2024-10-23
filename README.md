@@ -81,13 +81,10 @@ Or build from source using cargo.
 # Caveats
 * Has only been tested on my own GPX files from a Garmin Edge 1040.
 
-
 # TODO
 - Check EOFs everywhere?
 - Declaration bug?
 - Parse self-closed empty tags?
-- Create a new type(s) for latlon which is bounded to the range -90.0..90.0.
-  Also dgpsStationType (0..=1203)
 - A new Extensions type
 
 - Full pass lossless read and write of the complete XSD.
@@ -103,10 +100,16 @@ Or build from source using cargo.
 - Change to use Chrono and Chrono-TZ? Probably. First need to be
   able to reverse geocode lat-lon to timezone name.
 
-# Bugs
+# Design Questions
 - I think it's technically wrong to simply merge all tracks and segments?
   They may exist due to GPS interruptions, device restarts etc.
   Fixing this would make things a lot more complicated though.
+- Consider using a new type for DGBSStationType (0..=1023) on waypoint. The
+  current design validates when reading a document, but does not validate that
+  it is set to a valid value at runtime. The newtype pattern would require a lot
+  of boilerplate though, and derive_more doesn't really help with a lot of it.
+- Other possible newtypes with the same issues: lat/lon on waypoint and bounds,
+- and degrees on waypoint.magvar.
 
 # Links
 - GPX XSD: https://www.topografix.com/GPX/1/1/gpx.xsd

@@ -84,21 +84,17 @@ pub struct Extensions {
     pub(crate) raw_xml: String,
 }
 
-// TODO:
-pub type Lat = f64; // -90..90
-pub type Lon = f64; // -180..180
-
 /// A pair of (lat, lon) coordinates which constitute a bounding box.
 #[derive(Debug, Clone, Default)]
 pub struct Bounds {
     /// The minimum latitude.
-    pub min_lat: Lat,
+    pub min_lat: f64,
     /// The minimum longitude.
-    pub min_lon: Lon,
+    pub min_lon: f64,
     /// The maximum latitude.
-    pub max_lat: Lat,
+    pub max_lat: f64,
     /// The maximum longitude.
-    pub max_lon: Lon,
+    pub max_lon: f64,
 }
 
 /// Information about the copyright holder and any license governing use of this
@@ -209,9 +205,6 @@ pub struct TrackSegment {
     pub extensions: Option<Extensions>,
 }
 
-pub type Degrees = f64;
-pub type DGPSStationType = u16;
-
 /// Represents a waypoint, a point of interest, a named feature on a map or a
 /// point within a track. In the case of a trackpoint, very few fields are
 /// likely to be filled in by typical GPS units.
@@ -219,10 +212,10 @@ pub type DGPSStationType = u16;
 pub struct Waypoint {
     /// The latitude of the point. This is always in decimal degrees, and always
     /// in WGS84 datum.
-    pub lat: Lat,
+    pub lat: f64,
     /// The longitude of the point. This is always in decimal degrees, and
     /// always in WGS84 datum.
-    pub lon: Lon,
+    pub lon: f64,
     /// Elevation (in meters) of the point.
     pub ele: Option<f64>,
     /// Creation/modification timestamp for the waypoint. Date and time in are in
@@ -231,7 +224,7 @@ pub struct Waypoint {
     /// allowed for millisecond timing in tracklogs.
     pub time: Option<OffsetDateTime>,
     /// Magnetic variation (in degrees) at the point
-    pub magvar: Option<Degrees>,
+    pub magvar: Option<f64>,
     /// Height (in meters) of geoid (mean sea level) above WGS84 earth
     /// ellipsoid. As defined in NMEA GGA message.
     pub geoid_height: Option<f64>,
@@ -267,7 +260,7 @@ pub struct Waypoint {
     /// Number of seconds since last DGPS update.
     pub age_of_dgps_data: Option<f64>,
     /// ID of DGPS station used in differential correction.
-    pub dgps_id: Option<DGPSStationType>,
+    pub dgps_id: Option<u16>,
     /// Arbitrary extended information. Represented as an unparsed string.
     /// Garmin-specific trackpoint extensions as described at
     /// https://www8.garmin.com/xmlschemas/TrackPointExtensionv1.xsd are parsed

@@ -6,11 +6,52 @@ use time::{Duration, OffsetDateTime};
 use crate::{
     error::GapixError,
     model::{
-        Email, EnrichedGpx, EnrichedTrackPoint, Extensions, FixType, Gpx, Lat, Link, Lon, Metadata,
+        Bounds, Email, EnrichedGpx, EnrichedTrackPoint, Extensions, FixType, Gpx, Link, Metadata,
         Waypoint, XmlDeclaration,
     },
     stage::{distance_between_points_metres, speed_kmh_from_duration},
 };
+
+/// Checks to see whether a valid is in the valid range for a degrees value
+/// 0.0..=360.0, and if so returns the value else returns an error.
+pub fn validate_degrees(value: f64) -> Result<f64, GapixError> {
+    if !(0.0_f64..=360.0).contains(&value) {
+        Err(GapixError::InvalidDegrees(value))
+    } else {
+        Ok(value)
+    }
+}
+
+/// Checks to see whether a valid is in the valid range for a 'dgpsStationType'
+/// field of 0..=1023, and if so returns the value else returns an error.
+pub fn validate_dgps_station_id(value: i64) -> Result<u16, GapixError> {
+    if !(0_i64..=1023).contains(&value) {
+        Err(GapixError::InvalidDGPSStationId(value))
+    } else {
+        // SAFETY: 0..=1023 will fit into a u16.
+        Ok(value as u16)
+    }
+}
+
+/// Checks to see whether a valid is in the valid range for a latitude value of
+/// -90.0..90.0, and if so returns the value else returns an error.
+pub fn validate_latitude(value: f64) -> Result<f64, GapixError> {
+    if !(-90.0_f64..=90.0).contains(&value) {
+        Err(GapixError::InvalidLatitude(value))
+    } else {
+        Ok(value)
+    }
+}
+
+/// Checks to see whether a valid is in the valid range for a longitude value of
+/// -180.0..180.0, and if so returns the value else returns an error.
+pub fn validate_longitude(value: f64) -> Result<f64, GapixError> {
+    if !(-180.0_f64..=180.0).contains(&value) {
+        Err(GapixError::InvalidLongitude(value))
+    } else {
+        Ok(value)
+    }
+}
 
 impl Default for Gpx {
     /// Creates a new Gpx with 'gapix' as the creator.
@@ -155,12 +196,27 @@ impl Default for XmlDeclaration {
 }
 
 impl Waypoint {
-    pub fn with_lat_lon(lat: Lat, lon: Lon) -> Self {
-        Self {
-            lat,
-            lon,
+    /// Creates a new waypoint, validating that the lat and lon lie within the
+    /// acceptable ranges.
+    pub fn with_lat_lon(lat: f64, lon: f64) -> Result<Self, GapixError> {
+        Ok(Self {
+            lat: validate_latitude(lat)?,
+            lon: validate_longitude(lon)?,
             ..Default::default()
-        }
+        })
+    }
+}
+
+impl Bounds {
+    /// Creates a new Bounds, validating that the lat and lon lie within the
+    /// acceptable ranges.
+    pub fn new(min_lat: f64, min_lon: f64, max_lat: f64, max_lon: f64) -> Result<Self, GapixError> {
+        Ok(Self {
+            min_lat: validate_latitude(min_lat)?,
+            min_lon: validate_longitude(min_lon)?,
+            max_lat: validate_latitude(max_lat)?,
+            max_lon: validate_longitude(max_lon)?,
+        })
     }
 }
 

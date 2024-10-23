@@ -49,6 +49,14 @@ pub enum GapixError {
     UnexpectedEvent(String),
     #[error("Unexpected EOF. Check file for corruption")]
     UnexpectedEof,
+    #[error("Invalid DGPS station Id of {0}. Valid range is 0..=1023")]
+    InvalidDGPSStationId(i64),
+    #[error("Invalid latitude of {0}. Valid range is -90.0..=90.0")]
+    InvalidLatitude(f64),
+    #[error("Invalid longitude of {0}. Valid range is -180.0..=180.0")]
+    InvalidLongitude(f64),
+    #[error("Invalid degrees of {0}. Valid range is 0.0..=360")]
+    InvalidDegrees(f64),
 }
 
 impl From<AttrError> for GapixError {

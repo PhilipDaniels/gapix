@@ -9,12 +9,12 @@ pub(crate) fn parse_bounds<C: XmlReaderConversions>(
     converter: &C,
 ) -> Result<Bounds, GapixError> {
     let mut attributes = Attributes::new(start_element, converter)?;
-    let bounds = Bounds {
-        min_lat: attributes.get("minlat")?,
-        min_lon: attributes.get("minlon")?,
-        max_lat: attributes.get("maxlat")?,
-        max_lon: attributes.get("maxlon")?,
-    };
+    let bounds = Bounds::new(
+        attributes.get("minlat")?,
+        attributes.get("minlon")?,
+        attributes.get("maxlat")?,
+        attributes.get("maxlon")?,
+    )?;
     attributes.check_is_empty_now()?;
     Ok(bounds)
 }
@@ -98,6 +98,54 @@ mod tests {
         let start = start_parse(&mut xml_reader);
         match parse_bounds(&start, &mut xml_reader) {
             Err(GapixError::UnexpectedAttributes { .. }) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
+    }
+
+    #[test]
+    fn invalid_min_lat() {
+        let mut xml_reader = Reader::from_str(
+            r#"<bounds minlat="360.1" maxlat="1.1" minlon="-53.1111" maxlon="88.88">"#,
+        );
+        let start = start_parse(&mut xml_reader);
+        match parse_bounds(&start, &mut xml_reader) {
+            Err(GapixError::InvalidLatitude(360.1)) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
+    }
+
+    #[test]
+    fn invalid_max_lat() {
+        let mut xml_reader = Reader::from_str(
+            r#"<bounds minlat="-1.1" maxlat="360.1" minlon="-53.1111" maxlon="88.88">"#,
+        );
+        let start = start_parse(&mut xml_reader);
+        match parse_bounds(&start, &mut xml_reader) {
+            Err(GapixError::InvalidLatitude(360.1)) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
+    }
+
+    #[test]
+    fn invalid_min_lon() {
+        let mut xml_reader = Reader::from_str(
+            r#"<bounds minlat="-1.1" maxlat="1.1" minlon="-5453.1111" maxlon="88.88">"#,
+        );
+        let start = start_parse(&mut xml_reader);
+        match parse_bounds(&start, &mut xml_reader) {
+            Err(GapixError::InvalidLongitude(-5453.1111)) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
+    }
+
+    #[test]
+    fn invalid_max_lon() {
+        let mut xml_reader = Reader::from_str(
+            r#"<bounds minlat="-1.1" maxlat="1.1" minlon="-53.1111" maxlon="888.88">"#,
+        );
+        let start = start_parse(&mut xml_reader);
+        match parse_bounds(&start, &mut xml_reader) {
+            Err(GapixError::InvalidLongitude(888.88)) => {}
             x => panic!("Unexpected result from parse(): {:?}", x),
         };
     }

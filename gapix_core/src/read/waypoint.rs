@@ -3,7 +3,11 @@ use quick_xml::{
     Reader,
 };
 
-use crate::{error::GapixError, model::Waypoint};
+use crate::{
+    error::GapixError,
+    model::Waypoint,
+    model_impls::{validate_degrees, validate_dgps_station_id},
+};
 
 use super::{
     attributes::Attributes, extensions::parse_extensions, link::parse_link, XmlReaderExtensions,
@@ -20,7 +24,7 @@ pub(crate) fn parse_waypoint(
     let lon = attributes.get("lon")?;
     attributes.check_is_empty_now()?;
 
-    let mut wp = Waypoint::with_lat_lon(lat, lon);
+    let mut wp = Waypoint::with_lat_lon(lat, lon)?;
 
     loop {
         match xml_reader.read_event() {
@@ -32,7 +36,8 @@ pub(crate) fn parse_waypoint(
                     wp.time = Some(xml_reader.read_inner_as_time()?);
                 }
                 b"magvar" => {
-                    wp.magvar = Some(xml_reader.read_inner_as()?);
+                    let degrees = validate_degrees(xml_reader.read_inner_as()?)?;
+                    wp.magvar = Some(degrees);
                 }
                 b"geoidheight" => {
                     wp.geoid_height = Some(xml_reader.read_inner_as()?);
@@ -79,7 +84,8 @@ pub(crate) fn parse_waypoint(
                     wp.age_of_dgps_data = Some(xml_reader.read_inner_as()?);
                 }
                 b"dgpsid" => {
-                    wp.dgps_id = Some(xml_reader.read_inner_as()?);
+                    let id = validate_dgps_station_id(xml_reader.read_inner_as()?)?;
+                    wp.dgps_id = Some(id);
                 }
                 b"extensions" => {
                     wp.extensions = Some(parse_extensions(&start, xml_reader)?);
@@ -132,7 +138,7 @@ mod tests {
     #[test]
     fn valid_waypoint_all_fields() {
         let mut xml_reader = Reader::from_str(
-            r#"<trkpt lat="253.20625" lon="-11.450350">
+            r#"<trkpt lat="55.20625" lon="-11.450350">
                  <ele>158.399993896484375</ele>
                  <time>2024-02-02T10:10:54.000Z</time>
                  <magvar>52.3</magvar>
@@ -164,7 +170,7 @@ mod tests {
 
         let start = start_parse(&mut xml_reader);
         let result = parse_waypoint(&start, &mut xml_reader).unwrap();
-        assert_eq!(result.lat, 253.20625);
+        assert_eq!(result.lat, 55.20625);
         assert_eq!(result.lon, -11.450350);
         assert_eq!(result.magvar, Some(52.3));
         assert_eq!(result.geoid_height, Some(100.7));
@@ -191,9 +197,82 @@ mod tests {
     }
 
     #[test]
+    fn invalid_negative_dgps_id() {
+        let mut xml_reader = Reader::from_str(
+            r#"<trkpt lat="55.20625" lon="-11.450350">
+                 <dgpsid>-1</dgpsid>
+               </trkpt>"#,
+        );
+
+        let start = start_parse(&mut xml_reader);
+        match parse_waypoint(&start, &mut xml_reader) {
+            Err(GapixError::InvalidDGPSStationId(-1)) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
+    }
+
+    #[test]
+    fn invalid_positive_dgps_id() {
+        let mut xml_reader = Reader::from_str(
+            r#"<trkpt lat="55.20625" lon="-11.450350">
+                 <dgpsid>1024</dgpsid>
+               </trkpt>"#,
+        );
+
+        let start = start_parse(&mut xml_reader);
+        match parse_waypoint(&start, &mut xml_reader) {
+            Err(GapixError::InvalidDGPSStationId(1024)) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
+    }
+
+    #[test]
+    fn invalid_magvar() {
+        let mut xml_reader = Reader::from_str(
+            r#"<trkpt lat="55.20625" lon="-11.450350">
+                 <magvar>360.1</magvar>
+               </trkpt>"#,
+        );
+
+        let start = start_parse(&mut xml_reader);
+        match parse_waypoint(&start, &mut xml_reader) {
+            Err(GapixError::InvalidDegrees(360.1)) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
+    }
+
+    #[test]
+    fn invalid_latitude() {
+        let mut xml_reader = Reader::from_str(
+            r#"<trkpt lat="1234" lon="-11.450350">
+               </trkpt>"#,
+        );
+
+        let start = start_parse(&mut xml_reader);
+        match parse_waypoint(&start, &mut xml_reader) {
+            Err(GapixError::InvalidLatitude(1234.0)) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
+    }
+
+    #[test]
+    fn invalid_longitude() {
+        let mut xml_reader = Reader::from_str(
+            r#"<trkpt lat="34" lon="-1111.45">
+               </trkpt>"#,
+        );
+
+        let start = start_parse(&mut xml_reader);
+        match parse_waypoint(&start, &mut xml_reader) {
+            Err(GapixError::InvalidLongitude(-1111.45)) => {}
+            x => panic!("Unexpected result from parse(): {:?}", x),
+        };
+    }
+
+    #[test]
     fn extra_elements() {
         let mut xml_reader = Reader::from_str(
-            r#"<trkpt lat="253.20625" lon="-11.450350">
+            r#"<trkpt lat="55.20625" lon="-11.450350">
                  <foo>bar</foo>
                </trkpt>"#,
         );
@@ -208,7 +287,7 @@ mod tests {
     #[test]
     fn extra_attributes() {
         let mut xml_reader = Reader::from_str(
-            r#"<trkpt lat="253.20625" lon="-11.450350" foo="bar">
+            r#"<trkpt lat="55.20625" lon="-11.450350" foo="bar">
                </trkpt>"#,
         );
 

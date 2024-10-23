@@ -106,13 +106,13 @@ mod tests {
                  <type>Route type</type>
                  <extensions><foo><ex:ex1>extended data</ex:ex1></foo></extensions>
                  <trkseg>
-                    <trkpt lat="253.20625" lon="-11.450350">
+                    <trkpt lat="55.20625" lon="-11.450350">
                     </trkpt>
-                    <trkpt lat="253.20625" lon="-11.450350">
+                    <trkpt lat="55.20625" lon="-11.450350">
                     </trkpt>
                  </trkseg>
                  <trkseg>
-                    <trkpt lat="253.20625" lon="-11.450350">
+                    <trkpt lat="55.20625" lon="-11.450350">
                     </trkpt>
                  </trkseg>
                </trk>"#,
