@@ -36,15 +36,20 @@ mod tests {
     }
 
     #[test]
-    fn valid_extensions() {
+    fn valid_extensions_and_preserves_newlines() {
         let mut xml_reader = Reader::from_str(
             r#"<extensions>  
                   <foo bar="42">inner text</foo>
+<plod>12</plod>
                </extensions>"#,
         );
 
         let start = start_parse(&mut xml_reader);
         let result = parse_extensions(&start, &mut xml_reader).unwrap();
-        assert_eq!(result.raw_xml, r#"<foo bar="42">inner text</foo>"#);
+        assert_eq!(
+            result.raw_xml,
+            r#"<foo bar="42">inner text</foo>
+<plod>12</plod>"#
+        );
     }
 }

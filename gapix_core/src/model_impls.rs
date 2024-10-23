@@ -263,6 +263,18 @@ impl TryFrom<String> for FixType {
     }
 }
 
+impl std::fmt::Display for FixType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FixType::None => write!(f, "none"),
+            FixType::TwoDimensional => write!(f, "2d"),
+            FixType::ThreeDimensional => write!(f, "3d"),
+            FixType::DGPS => write!(f, "dgps"),
+            FixType::PPS => write!(f, "pps"),
+        }
+    }
+}
+
 impl EnrichedGpx {
     /// Returns the last valid index in the points array.
     /// Just a convenience fn to avoid off-by-one errors (hopefully).
