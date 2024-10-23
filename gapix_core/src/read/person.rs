@@ -22,6 +22,7 @@ pub(crate) fn parse_person(
                     person.name = Some(xml_reader.read_inner_as()?);
                 }
                 b"email" => {
+                    // Email can come as <email>..</email> which will trigger this case.
                     person.email = Some(parse_email(&start, xml_reader)?);
                 }
                 b"link" => {
@@ -29,6 +30,14 @@ pub(crate) fn parse_person(
                 }
                 e => return Err(GapixError::bad_start(e, xml_reader)),
             },
+            Ok(Event::Empty(start)) => {
+                // Email can come as <email /> which will trigger this case.
+                if start.name().as_ref() == b"email" {
+                    person.email = Some(parse_email(&start, xml_reader)?);
+                } else {
+                    return Err(GapixError::bad_event(Ok(Event::Empty(start))));
+                }
+            }
             Ok(Event::End(e)) => {
                 let n = e.name();
                 let n = n.as_ref();
@@ -74,6 +83,23 @@ mod tests {
         assert_eq!(email.domain, "gmail.com");
         let link = result.link.unwrap();
         assert_eq!(link.href, "http://example.com");
+    }
+
+    #[test]
+    fn valid_person_self_closing_email() {
+        let mut xml_reader = Reader::from_str(
+            r#"<person>
+                 <name>Homer Simpson</name>
+                 <email id="phil" domain="gmail.com" />
+               </person>"#,
+        );
+
+        let start = start_parse(&mut xml_reader);
+        let result = parse_person(&start, &mut xml_reader).unwrap();
+        assert_eq!(result.name, Some("Homer Simpson".to_string()));
+        let email = result.email.unwrap();
+        assert_eq!(email.id, "phil");
+        assert_eq!(email.domain, "gmail.com");
     }
 
     #[test]

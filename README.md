@@ -84,7 +84,6 @@ Or build from source using cargo.
 # TODO
 - Check EOFs everywhere?
 - Declaration bug?
-- Parse self-closed empty tags?
 - A new Extensions type
 
 - Full pass lossless read and write of the complete XSD.
