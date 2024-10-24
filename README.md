@@ -84,12 +84,10 @@ Or build from source using cargo.
 # TODO
 - Check EOFs everywhere?
 - Declaration bug?
-- A new Extensions type
 
-- Full pass lossless read and write of the complete XSD.
-- Pass some options into the gpx_writer to control the fidelity.
 - Move model into its own crate.
-
+- Control decimal precision
+ 
 - Reverse geocode the stopped stages and the first and last point.
   Use a separate crate, maybe publish it.
 - Track splitting

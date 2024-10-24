@@ -47,7 +47,7 @@ pub struct Gpx {
 
 /// Represents the 'xml' declaration - the first line of an XML file (not just
 /// GPX files).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct XmlDeclaration {
     pub version: String,
     pub encoding: Option<String>,
@@ -79,7 +79,7 @@ pub struct Metadata {
     pub extensions: Option<Extensions>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Extensions {
     pub(crate) raw_xml: String,
 }
@@ -100,7 +100,7 @@ pub struct Bounds {
 /// Information about the copyright holder and any license governing use of this
 /// file. By linking to an appropriate license, you may place your data into the
 /// public domain or grant additional usage rights.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Copyright {
     /// The year of copyright.
     pub year: Option<i16>,
@@ -112,7 +112,7 @@ pub struct Copyright {
 
 /// Represents the 'personType' from the XSD. This can be a person or an
 /// organisation.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Person {
     /// Name of person or organization.
     pub name: Option<String>,
@@ -123,7 +123,7 @@ pub struct Person {
 }
 
 /// Represents the 'emailType' from the XSD.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Email {
     /// The first part of the email address (before the '@').
     pub id: String,
@@ -133,7 +133,7 @@ pub struct Email {
 
 /// Represents the 'linkType' from the XSD. A link to an external resource (Web
 /// page, digital photo, video clip, etc.) with additional information.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Link {
     /// Text of hyperlink
     pub text: Option<String>,

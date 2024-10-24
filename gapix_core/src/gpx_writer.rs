@@ -25,7 +25,9 @@ pub enum OutputOptions {
     /// Writes just enough data to be a valid Audax UK DIY submission. This will
     /// exclude GPX-level waypoints, routes, extensions and waypoints within
     /// tracks (aka trackpoints) will have the minimal required information
-    /// instead of full detail.
+    /// instead of full detail. Most other things, such as the 'metadata', will
+    /// be fully written because they are a small part of the overall file size
+    /// (which is dominated by trackpoints).
     AudaxUKDIY,
 }
 
@@ -59,7 +61,7 @@ pub fn write_gpx_to_file<P: AsRef<Path>>(
     let mut w = ByteCounter::new(w);
     write_gpx_to_writer(&mut w, gpx, options)?;
     info!(
-        "Wrote PX file {:?}, {} Kb",
+        "Wrote GPX file {:?}, {} Kb",
         output_file,
         w.bytes_written() / 1024
     );
@@ -74,9 +76,9 @@ pub fn write_gpx_to_writer<W: Write>(
     gpx: &Gpx,
     output_options: OutputOptions,
 ) -> Result<(), GapixError> {
-    write_declaration_element(w, &gpx.declaration)?;
-    write_gpxinfo_element_open(w, gpx)?;
-    write_metadata_element(w, &gpx.metadata)?;
+    write_declaration(w, &gpx.declaration)?;
+    write_gpx_open(w, gpx)?;
+    write_metadata(w, &gpx.metadata)?;
 
     match output_options {
         OutputOptions::Full => {
@@ -101,16 +103,13 @@ pub fn write_gpx_to_writer<W: Write>(
         OutputOptions::AudaxUKDIY => { /* Extensions not needed */ }
     }
 
-    write_gpxinfo_element_close(w)?;
+    writeln!(w, "</gpx>")?;
 
     w.flush()?;
     Ok(())
 }
 
-fn write_declaration_element<W: Write>(
-    w: &mut W,
-    declaration: &XmlDeclaration,
-) -> Result<(), GapixError> {
+fn write_declaration<W: Write>(w: &mut W, declaration: &XmlDeclaration) -> Result<(), GapixError> {
     write!(w, "<?xml version=\"{}\"", declaration.version)?;
     if let Some(encoding) = &declaration.encoding {
         write!(w, " encoding=\"{}\"", encoding)?;
@@ -122,7 +121,7 @@ fn write_declaration_element<W: Write>(
     Ok(())
 }
 
-fn write_gpxinfo_element_open<W: Write>(w: &mut W, info: &Gpx) -> Result<(), GapixError> {
+fn write_gpx_open<W: Write>(w: &mut W, info: &Gpx) -> Result<(), GapixError> {
     writeln!(
         w,
         "<gpx creator=\"{}\" version=\"{}\"",
@@ -135,12 +134,7 @@ fn write_gpxinfo_element_open<W: Write>(w: &mut W, info: &Gpx) -> Result<(), Gap
     Ok(())
 }
 
-fn write_gpxinfo_element_close<W: Write>(w: &mut W) -> Result<(), GapixError> {
-    writeln!(w, "</gpx>")?;
-    Ok(())
-}
-
-fn write_metadata_element<W: Write>(w: &mut W, metadata: &Metadata) -> Result<(), GapixError> {
+fn write_metadata<W: Write>(w: &mut W, metadata: &Metadata) -> Result<(), GapixError> {
     writeln!(w, "  <metadata>")?;
     if let Some(name) = &metadata.name {
         writeln!(w, "    <name>{}</name>", name)?;
@@ -149,13 +143,13 @@ fn write_metadata_element<W: Write>(w: &mut W, metadata: &Metadata) -> Result<()
         writeln!(w, "    <desc>{}</desc>", desc)?;
     }
     if let Some(author) = &metadata.author {
-        write_person_element(w, author, "author")?;
+        write_person(w, author, "author")?;
     }
     if let Some(copyright) = &metadata.copyright {
-        write_copyright_element(w, copyright)?;
+        write_copyright(w, copyright)?;
     }
     for link in &metadata.links {
-        write_link_element(w, link)?;
+        write_link(w, link)?;
     }
     if let Some(time) = &metadata.time {
         writeln!(w, "    <time>{}</time>", format_utc_date(time)?)?;
@@ -166,7 +160,7 @@ fn write_metadata_element<W: Write>(w: &mut W, metadata: &Metadata) -> Result<()
     if let Some(bounds) = &metadata.bounds {
         writeln!(
             w,
-            "    <bounds min_lat=\"{:.6}\" max_lat=\"{:.6}\" min_lon=\"{:.6}\" max_lon=\"{:.6}\"/>",
+            "    <bounds minlat=\"{}\" maxlat=\"{}\" minlon=\"{}\" maxlon=\"{}\"/>",
             bounds.min_lat, bounds.max_lat, bounds.min_lon, bounds.max_lon
         )?;
     }
@@ -176,7 +170,7 @@ fn write_metadata_element<W: Write>(w: &mut W, metadata: &Metadata) -> Result<()
     Ok(())
 }
 
-fn write_person_element<W: Write>(
+fn write_person<W: Write>(
     w: &mut W,
     person: &Person,
     element_name: &str,
@@ -186,16 +180,16 @@ fn write_person_element<W: Write>(
         writeln!(w, "  <name>{}</name>", name)?;
     }
     if let Some(email) = &person.email {
-        write_email_element(w, email)?;
+        write_email(w, email)?;
     }
     if let Some(link) = &person.link {
-        write_link_element(w, link)?;
+        write_link(w, link)?;
     }
     writeln!(w, "</{}>", element_name)?;
     Ok(())
 }
 
-fn write_copyright_element<W: Write>(w: &mut W, copyright: &Copyright) -> Result<(), GapixError> {
+fn write_copyright<W: Write>(w: &mut W, copyright: &Copyright) -> Result<(), GapixError> {
     writeln!(w, "<copyright>")?;
     if let Some(year) = &copyright.year {
         writeln!(w, "  <year>{}</year>", year)?;
@@ -208,7 +202,7 @@ fn write_copyright_element<W: Write>(w: &mut W, copyright: &Copyright) -> Result
     Ok(())
 }
 
-fn write_email_element<W: Write>(w: &mut W, email: &Email) -> Result<(), GapixError> {
+fn write_email<W: Write>(w: &mut W, email: &Email) -> Result<(), GapixError> {
     writeln!(
         w,
         "<email id=\"{}\" domain=\"{}\" />",
@@ -217,7 +211,7 @@ fn write_email_element<W: Write>(w: &mut W, email: &Email) -> Result<(), GapixEr
     Ok(())
 }
 
-fn write_link_element<W: Write>(w: &mut W, link: &Link) -> Result<(), GapixError> {
+fn write_link<W: Write>(w: &mut W, link: &Link) -> Result<(), GapixError> {
     writeln!(w, "    <link href=\"{}\">", link.href)?;
     if let Some(text) = &link.text {
         writeln!(w, "      <text>{}</text>", text)?;
@@ -244,7 +238,7 @@ fn write_route<W: Write>(w: &mut W, route: &Route) -> Result<(), GapixError> {
         writeln!(w, "    <src>{}</src>", source)?;
     }
     for link in &route.links {
-        write_link_element(w, link)?;
+        write_link(w, link)?;
     }
     if let Some(number) = &route.number {
         writeln!(w, "    <number>{}</number>", number)?;
@@ -279,7 +273,7 @@ fn write_track<W: Write>(
         writeln!(w, "    <src>{}</src>", source)?;
     }
     for link in &track.links {
-        write_link_element(w, link)?;
+        write_link(w, link)?;
     }
     if let Some(number) = &track.number {
         writeln!(w, "    <number>{}</number>", number)?;
@@ -315,22 +309,41 @@ fn write_waypoint<W: Write>(
     element_name: &str,
     output_options: OutputOptions,
 ) -> Result<(), GapixError> {
+    match output_options {
+        OutputOptions::AudaxUKDIY => {
+            writeln!(
+                w,
+                "      <{element_name} lat=\"{:.6}\" lon=\"{:.6}\">",
+                point.lat, point.lon
+            )?;
+            if let Some(ele) = point.ele {
+                writeln!(w, "        <ele>{:.1}</ele>", ele)?;
+            }
+            if let Some(t) = point.time {
+                writeln!(w, "        <time>{}</time>", format_utc_date(&t)?)?;
+            }
+            writeln!(w, "      </{element_name}>")?;
+            return Ok(());
+        }
+        OutputOptions::Full => { /* Drop through */ }
+    }
+
     writeln!(
         w,
-        "      <{element_name} lat=\"{:.6}\" lon=\"{:.6}\">",
+        "      <{element_name} lat=\"{}\" lon=\"{}\">",
         point.lat, point.lon
     )?;
     if let Some(ele) = point.ele {
-        writeln!(w, "        <ele>{:.1}</ele>", ele)?;
+        writeln!(w, "        <ele>{}</ele>", ele)?;
     }
     if let Some(t) = point.time {
         writeln!(w, "        <time>{}</time>", format_utc_date(&t)?)?;
     }
     if let Some(magvar) = point.magvar {
-        writeln!(w, "        <magvar>{:.6}</magvar>", magvar)?;
+        writeln!(w, "        <magvar>{}</magvar>", magvar)?;
     }
     if let Some(geoid_height) = point.geoid_height {
-        writeln!(w, "        <geoidheight>{:.6}</geoidheight>", geoid_height)?;
+        writeln!(w, "        <geoidheight>{}</geoidheight>", geoid_height)?;
     }
     if let Some(name) = &point.name {
         writeln!(w, "        <name>{name}</name>")?;
@@ -345,7 +358,7 @@ fn write_waypoint<W: Write>(
         writeln!(w, "        <src>{src}</src>")?;
     }
     for link in &point.links {
-        write_link_element(w, link)?;
+        write_link(w, link)?;
     }
     if let Some(sym) = &point.symbol {
         writeln!(w, "        <sym>{sym}</sym>")?;
@@ -360,26 +373,21 @@ fn write_waypoint<W: Write>(
         writeln!(w, "        <sat>{sat}</sat>")?;
     }
     if let Some(hdop) = point.hdop {
-        writeln!(w, "        <hdop>{:.6}</hdop>", hdop)?;
+        writeln!(w, "        <hdop>{}</hdop>", hdop)?;
     }
     if let Some(vdop) = point.vdop {
-        writeln!(w, "        <vdop>{:.6}</vdop>", vdop)?;
+        writeln!(w, "        <vdop>{}</vdop>", vdop)?;
     }
     if let Some(pdop) = point.pdop {
-        writeln!(w, "        <pdop>{:.6}</pdop>", pdop)?;
+        writeln!(w, "        <pdop>{}</pdop>", pdop)?;
     }
     if let Some(age) = point.age_of_dgps_data {
-        writeln!(w, "        <ageofdgpsdata>{:.6}</ageofdgpsdata>", age)?;
+        writeln!(w, "        <ageofdgpsdata>{}</ageofdgpsdata>", age)?;
     }
     if let Some(id) = point.dgps_id {
         writeln!(w, "        <dgpsid>{id}</dgpsid>")?;
     }
-    match output_options {
-        OutputOptions::Full => {
-            write_extensions(w, &point.extensions)?;
-        }
-        OutputOptions::AudaxUKDIY => { /* Not needed */ }
-    }
+    write_extensions(w, &point.extensions)?;
     writeln!(w, "      </{element_name}>")?;
     Ok(())
 }
@@ -388,11 +396,295 @@ fn write_extensions<W: Write>(
     w: &mut W,
     extensions: &Option<Extensions>,
 ) -> Result<(), GapixError> {
-    // TODO: Need to be careful of the namespace. Can get it from the GPX tag.
-
     if let Some(ext) = extensions {
         writeln!(w, "<extensions>{}</extensions>", ext.raw_xml)?;
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{model::*, read::read_gpx_from_slice};
+    use std::{collections::HashMap, iter::zip};
+    use time::{format_description::well_known, OffsetDateTime};
+
+    /// We construct 'gpx1', then write it to a buffer. We then
+    /// deserialize the buffer into 'gpx2'. The two models should be identical
+    /// if we did everything correctly.
+    #[test]
+    fn round_trip_entire_model() {
+        let gpx1 = make_fully_populated_gpx();
+        let mut buffer = Vec::new();
+        write_gpx_to_writer(&mut buffer, &gpx1, OutputOptions::Full).unwrap();
+        write_gpx_to_file(
+            "/home/phil/repos/mine/gapix/target/release/round_trip.gpx",
+            &gpx1,
+            OutputOptions::Full,
+        )
+        .unwrap();
+
+        let gpx2 = read_gpx_from_slice(&buffer).unwrap();
+
+        // Filename is not written to or parsed from the buffer.
+
+        assert_eq!(gpx1.declaration, gpx2.declaration);
+        assert_eq!(gpx1.version, gpx2.version);
+        assert_eq!(gpx1.creator, gpx2.creator);
+        assert_eq!(gpx1.attributes, gpx2.attributes);
+        compare_metadata(&gpx1.metadata, &gpx2.metadata);
+        for (wp1, wp2) in zip(&gpx1.waypoints, &gpx2.waypoints) {
+            compare_waypoint(wp1, wp2);
+        }
+        for (route1, route2) in zip(&gpx1.routes, &gpx2.routes) {
+            compare_route(route1, route2);
+        }
+        for (track1, track2) in zip(&gpx1.tracks, &gpx2.tracks) {
+            compare_track(track1, track2);
+        }
+        assert_eq!(gpx1.extensions, gpx2.extensions);
+    }
+
+    fn compare_metadata(md1: &Metadata, md2: &Metadata) {
+        assert_eq!(md1.name, md2.name);
+        assert_eq!(md1.description, md2.description);
+        assert_eq!(md1.author, md2.author);
+        assert_eq!(md1.copyright, md2.copyright);
+        assert_eq!(md1.links, md2.links);
+        assert_eq!(md1.time, md2.time);
+        assert_eq!(md1.keywords, md2.keywords);
+        let b1 = md1.bounds.as_ref().unwrap();
+        let b2 = md2.bounds.as_ref().unwrap();
+        assert_eq!(b1.min_lat, b2.min_lat);
+        assert_eq!(b1.min_lon, b2.min_lon);
+        assert_eq!(b1.max_lat, b2.max_lat);
+        assert_eq!(b1.max_lon, b2.max_lon);
+        assert_eq!(md1.extensions, md2.extensions);
+    }
+
+    fn compare_route(route1: &Route, route2: &Route) {
+        assert_eq!(route1.name, route2.name);
+        assert_eq!(route1.comment, route2.comment);
+        assert_eq!(route1.description, route2.description);
+        assert_eq!(route1.source, route2.source);
+        assert_eq!(route1.links, route2.links);
+        assert_eq!(route1.number, route2.number);
+        assert_eq!(route1.r#type, route2.r#type);
+        assert_eq!(route1.extensions, route2.extensions);
+        for (wp1, wp2) in zip(&route1.points, &route2.points) {
+            compare_waypoint(wp1, wp2);
+        }
+    }
+    fn compare_track(track1: &Track, track2: &Track) {
+        assert_eq!(track1.name, track2.name);
+        assert_eq!(track1.comment, track2.comment);
+        assert_eq!(track1.description, track2.description);
+        assert_eq!(track1.source, track2.source);
+        assert_eq!(track1.links, track2.links);
+        assert_eq!(track1.number, track2.number);
+        assert_eq!(track1.r#type, track2.r#type);
+        assert_eq!(track1.extensions, track2.extensions);
+        for (segment1, segment2) in zip(&track1.segments, &track2.segments) {
+            assert_eq!(segment1.extensions, segment2.extensions);
+            for (wp1, wp2) in zip(&segment1.points, &segment2.points) {
+                compare_waypoint(wp1, wp2);
+            }
+        }
+    }
+
+    fn compare_waypoint(wp1: &Waypoint, wp2: &Waypoint) {
+        assert_eq!(wp1.lat, wp2.lat);
+        assert_eq!(wp1.lon, wp2.lon);
+        assert_eq!(wp1.ele, wp2.ele);
+        assert_eq!(wp1.time, wp2.time);
+        assert_eq!(wp1.magvar, wp2.magvar);
+        assert_eq!(wp1.geoid_height, wp2.geoid_height);
+        assert_eq!(wp1.name, wp2.name);
+        assert_eq!(wp1.comment, wp2.comment);
+        assert_eq!(wp1.description, wp2.description);
+        assert_eq!(wp1.source, wp2.source);
+        assert_eq!(wp1.links, wp2.links);
+        assert_eq!(wp1.symbol, wp2.symbol);
+        assert_eq!(wp1.r#type, wp2.r#type);
+        assert_eq!(wp1.fix, wp2.fix);
+        assert_eq!(wp1.num_satellites, wp2.num_satellites);
+        assert_eq!(wp1.hdop, wp2.hdop);
+        assert_eq!(wp1.vdop, wp2.vdop);
+        assert_eq!(wp1.pdop, wp2.pdop);
+        assert_eq!(wp1.age_of_dgps_data, wp2.age_of_dgps_data);
+        assert_eq!(wp1.dgps_id, wp2.dgps_id);
+        assert_eq!(wp1.extensions, wp2.extensions);
+    }
+
+    fn make_fully_populated_gpx() -> Gpx {
+        let declaration = XmlDeclaration {
+            version: "1.0".to_string(),
+            encoding: Some("UTF-8".to_string()),
+            standalone: Some("false".to_string()),
+        };
+
+        let copyright = Copyright {
+            year: Some(2024),
+            license: Some("MIT".to_string()),
+            author: "Homer Simpson".to_string(),
+        };
+
+        let author = Person {
+            name: Some("First Person".to_string()),
+            email: Some(Email {
+                id: "first_person".to_string(),
+                domain: "gmail.com".to_string(),
+            }),
+            link: Some(make_link("Author Link", "txt", "http://example.com")),
+        };
+
+        let bounds = Bounds::new(10.0, 20.0, 30.0, 40.0).unwrap();
+
+        let metadata = Metadata {
+            name: Some("My GPX".to_string()),
+            description: Some("My GPX Description".to_string()),
+            author: Some(author),
+            copyright: Some(copyright),
+            links: vec![
+                make_link("Metadata Link 1", "jpeg", "http://jpeg1.com"),
+                make_link("Metadata Link 2", "mp3", "http://mp3.com"),
+            ],
+            time: Some(
+                OffsetDateTime::parse("2024-02-02T10:10:54.000Z", &well_known::Rfc3339).unwrap(),
+            ),
+            keywords: Some("keyword1, keyword2".to_string()),
+            bounds: Some(bounds),
+            extensions: Some(Extensions::new(
+                "The raw inner text of some metadata extensions",
+            )),
+        };
+
+        let mut gpx = Gpx::new(declaration, metadata);
+        gpx.version = "1.1".to_string();
+        gpx.creator = "GAPIX".to_string();
+        gpx.attributes = HashMap::new();
+        gpx.attributes
+            .insert("key1".to_string(), "value1".to_string());
+        gpx.attributes
+            .insert("key2".to_string(), "value2".to_string());
+        gpx.waypoints = make_waypoints(5, "Main", -20.0);
+        gpx.routes = make_routes(7, 20.0);
+        gpx.tracks = make_tracks(2, 40.0);
+        gpx.extensions = Some(Extensions::new("The raw inner text of some GPX extensions"));
+
+        gpx
+    }
+
+    fn make_link(text: &str, r#type: &str, href: &str) -> Link {
+        Link {
+            text: Some(text.to_string()),
+            r#type: Some(r#type.to_string()),
+            href: href.to_string(),
+        }
+    }
+
+    fn make_routes(count: usize, latlon_base: f64) -> Vec<Route> {
+        (0..count)
+            .map(|i| Route {
+                name: Some(format!("Route {i}")),
+                comment: Some(format!("Route {i} Comment")),
+                description: Some(format!("Route {i} Description")),
+                source: Some(format!("Route {i} Source")),
+                links: vec![
+                    make_link(&format!("Route {i} Link 1"), "jpeg", "http://jpeg1.com"),
+                    make_link(&format!("Route {i} Link 2"), "mp3", "http://mp3.com"),
+                    make_link(&format!("Route {i} Link 3"), "txt", "http://txt.com"),
+                ],
+                number: Some(i as u32),
+                r#type: Some(format!("Route {i} Type")),
+                extensions: Some(Extensions::new(format!("Route {i} Extensions"))),
+                points: make_waypoints(4, "Route", latlon_base),
+            })
+            .collect()
+    }
+
+    fn make_tracks(count: usize, latlon_base: f64) -> Vec<Track> {
+        (0..count)
+            .map(|i| Track {
+                name: Some(format!("Route {i}")),
+                comment: Some(format!("Route {i} Comment")),
+                description: Some(format!("Route {i} Description")),
+                source: Some(format!("Route {i} Source")),
+                links: vec![
+                    make_link(&format!("Route {i} Link 1"), "jpeg", "http://jpeg1.com"),
+                    make_link(&format!("Route {i} Link 2"), "mp3", "http://mp3.com"),
+                    make_link(&format!("Route {i} Link 3"), "txt", "http://txt.com"),
+                ],
+                number: Some(i as u32),
+                r#type: Some(format!("Route {i} Type")),
+                extensions: Some(Extensions::new(format!("Route {i} Extensions"))),
+                segments: vec![
+                    TrackSegment {
+                        points: make_waypoints(20, "Track", latlon_base),
+                        extensions: Some(Extensions::new(format!(
+                            "Track Segment {i}.1 Extensions"
+                        ))),
+                    },
+                    TrackSegment {
+                        points: make_waypoints(30, "Track", latlon_base),
+                        extensions: Some(Extensions::new(format!(
+                            "Track Segment {i}.2 Extensions"
+                        ))),
+                    },
+                    TrackSegment {
+                        points: make_waypoints(50, "Track", latlon_base),
+                        extensions: Some(Extensions::new(format!(
+                            "Track Segment {i}.2 Extensions"
+                        ))),
+                    },
+                ],
+            })
+            .collect()
+    }
+
+    /// Generate 'count' waypoints, arranging for them to have unique names
+    /// (sub-elements) and lat-lon (attributes) values.
+    fn make_waypoints(count: usize, name: &str, latlon_base: f64) -> Vec<Waypoint> {
+        (0..count)
+            .map(|i| {
+                // Generate some waypo
+                let fullname = format!("{name} Waypoint {i}");
+                make_waypoint(i, fullname, latlon_base)
+            })
+            .collect()
+    }
+
+    fn make_waypoint<S: Into<String>>(i: usize, name: S, latlon_base: f64) -> Waypoint {
+        let lat = latlon_base + i as f64;
+        let lon = latlon_base - i as f64;
+        let mut wp = Waypoint::with_lat_lon(lat, lon).unwrap();
+
+        wp.ele = Some(12.3);
+        wp.time =
+            Some(OffsetDateTime::parse("2024-02-02T10:10:54.000Z", &well_known::Rfc3339).unwrap());
+        wp.magvar = Some(98.121242354365);
+        wp.geoid_height = Some(123.8487);
+        wp.name = Some(name.into());
+        wp.comment = Some(format!("Waypoint {i} Comment"));
+        wp.description = Some(format!("Waypoint {i} Description"));
+        wp.source = Some(format!("Waypoint {i} Source"));
+        wp.links = vec![
+            make_link(&format!("Waypoint {i} Link 1"), "jpeg", "http://jpeg1.com"),
+            make_link(&format!("Waypoint {i} Link 2"), "mp3", "http://mp3.com"),
+            make_link(&format!("Waypoint {i} Link 3"), "txt", "http://txt.com"),
+        ];
+        wp.symbol = Some(format!("Waypoint {i} Symbol"));
+        wp.r#type = Some(format!("Waypoint {i} Type"));
+        wp.fix = Some(FixType::PPS);
+        wp.num_satellites = Some(12 + i as u16);
+        wp.hdop = Some(1.1 + i as f64);
+        wp.vdop = Some(1.1 - i as f64);
+        wp.pdop = Some(100.1 + i as f64);
+        wp.age_of_dgps_data = Some(20.0 + i as f64);
+        wp.dgps_id = Some(200 + i as u16);
+        wp.extensions = Some(Extensions::new(format!("Waypoint {i}Extensions")));
+
+        wp
+    }
 }
