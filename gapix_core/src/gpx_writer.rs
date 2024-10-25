@@ -139,7 +139,7 @@ fn write_gpx_open<W: Write>(w: &mut W, info: &Gpx) -> Result<(), GapixError> {
 }
 
 fn write_metadata<W: Write>(
-    w: &mut IndentWriter<'_, W>,
+    w: &mut IndentWriter<W>,
     metadata: &Metadata,
 ) -> Result<(), GapixError> {
     writeln!(w, "<metadata>")?;
@@ -180,7 +180,7 @@ fn write_metadata<W: Write>(
 }
 
 fn write_person<W: Write>(
-    w: &mut IndentWriter<'_, W>,
+    w: &mut IndentWriter<W>,
     person: &Person,
     element_name: &str,
 ) -> Result<(), GapixError> {
@@ -201,7 +201,7 @@ fn write_person<W: Write>(
 }
 
 fn write_copyright<W: Write>(
-    w: &mut IndentWriter<'_, W>,
+    w: &mut IndentWriter<W>,
     copyright: &Copyright,
 ) -> Result<(), GapixError> {
     writeln!(w, "<copyright>")?;
@@ -227,7 +227,7 @@ fn write_email<W: Write>(w: &mut W, email: &Email) -> Result<(), GapixError> {
     Ok(())
 }
 
-fn write_link<W: Write>(w: &mut IndentWriter<'_, W>, link: &Link) -> Result<(), GapixError> {
+fn write_link<W: Write>(w: &mut IndentWriter<W>, link: &Link) -> Result<(), GapixError> {
     writeln!(w, "<link href=\"{}\">", link.href)?;
     w.inc();
     if let Some(text) = &link.text {
@@ -241,7 +241,7 @@ fn write_link<W: Write>(w: &mut IndentWriter<'_, W>, link: &Link) -> Result<(), 
     Ok(())
 }
 
-fn write_route<W: Write>(w: &mut IndentWriter<'_, W>, route: &Route) -> Result<(), GapixError> {
+fn write_route<W: Write>(w: &mut IndentWriter<W>, route: &Route) -> Result<(), GapixError> {
     writeln!(w, "<rte>")?;
     w.inc();
     if let Some(name) = &route.name {
@@ -275,7 +275,7 @@ fn write_route<W: Write>(w: &mut IndentWriter<'_, W>, route: &Route) -> Result<(
 }
 
 fn write_track<W: Write>(
-    w: &mut IndentWriter<'_, W>,
+    w: &mut IndentWriter<W>,
     track: &Track,
     output_options: OutputOptions,
 ) -> Result<(), GapixError> {
@@ -312,7 +312,7 @@ fn write_track<W: Write>(
 }
 
 fn write_track_segment<W: Write>(
-    w: &mut IndentWriter<'_, W>,
+    w: &mut IndentWriter<W>,
     segment: &TrackSegment,
     output_options: OutputOptions,
 ) -> Result<(), GapixError> {
@@ -328,7 +328,7 @@ fn write_track_segment<W: Write>(
 }
 
 fn write_waypoint<W: Write>(
-    w: &mut IndentWriter<'_, W>,
+    w: &mut IndentWriter<W>,
     point: &Waypoint,
     element_name: &str,
     output_options: OutputOptions,
