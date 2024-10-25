@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 env_logger = { workspace = true }
 geo = "0.28.0"
+indent_write = { git = "https://github.com/PhilipDaniels/indent-write.git", branch = "indent-outdent" }
 log = { workspace = true }
 logging_timer = { workspace = true }
 quick-xml = { version = "0.36" }
