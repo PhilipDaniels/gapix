@@ -84,15 +84,11 @@ Or build from source using cargo.
 # TODO
 - Check EOFs everywhere?
 - Declaration bug?
-
 - Move model into its own crate.
-- Control decimal precision
- 
 - Reverse geocode the stopped stages and the first and last point.
   Use a separate crate, maybe publish it.
-- Track splitting
-- Waypoint processing
-- Create an IndentingWriter based off the 'indent_write' crate.
+- Track splitting. Put file-level waypoints on the nearest split track.
+- Waypoint processing for warnings etc.
 - Use Rayon - CAN'T - Time crate blows up in to_local_offset.
 - Change to use Chrono and Chrono-TZ? Probably. First need to be
   able to reverse geocode lat-lon to timezone name.

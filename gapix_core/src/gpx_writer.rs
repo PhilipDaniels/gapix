@@ -80,7 +80,7 @@ pub fn write_gpx_to_writer<W: Write>(
     let mut w = IndentWriter::new("  ", w);
     write_declaration(&mut w, &gpx.declaration)?;
     write_gpx_open(&mut w, gpx)?;
-    w.inc();
+    w.indent();
     write_metadata(&mut w, &gpx.metadata)?;
 
     match output_options {
@@ -106,7 +106,7 @@ pub fn write_gpx_to_writer<W: Write>(
         OutputOptions::AudaxUKDIY => { /* Extensions not needed */ }
     }
 
-    w.dec();
+    w.outdent();
     writeln!(w, "</gpx>")?;
 
     w.flush()?;
@@ -143,7 +143,7 @@ fn write_metadata<W: Write>(
     metadata: &Metadata,
 ) -> Result<(), GapixError> {
     writeln!(w, "<metadata>")?;
-    w.inc();
+    w.indent();
     if let Some(name) = &metadata.name {
         writeln!(w, "<name>{}</name>", name)?;
     }
@@ -174,7 +174,7 @@ fn write_metadata<W: Write>(
     }
     write_extensions(w, &metadata.extensions)?;
 
-    w.dec();
+    w.outdent();
     writeln!(w, "</metadata>")?;
     Ok(())
 }
@@ -185,7 +185,7 @@ fn write_person<W: Write>(
     element_name: &str,
 ) -> Result<(), GapixError> {
     writeln!(w, "<{}>", element_name)?;
-    w.inc();
+    w.indent();
     if let Some(name) = &person.name {
         writeln!(w, "<name>{}</name>", name)?;
     }
@@ -195,7 +195,7 @@ fn write_person<W: Write>(
     if let Some(link) = &person.link {
         write_link(w, link)?;
     }
-    w.dec();
+    w.outdent();
     writeln!(w, "</{}>", element_name)?;
     Ok(())
 }
@@ -205,7 +205,7 @@ fn write_copyright<W: Write>(
     copyright: &Copyright,
 ) -> Result<(), GapixError> {
     writeln!(w, "<copyright>")?;
-    w.inc();
+    w.indent();
     if let Some(year) = &copyright.year {
         writeln!(w, "<year>{}</year>", year)?;
     }
@@ -213,7 +213,7 @@ fn write_copyright<W: Write>(
         writeln!(w, "<license>{}</license>", license)?;
     }
     writeln!(w, "<author>{}</author>", copyright.author)?;
-    w.dec();
+    w.outdent();
     writeln!(w, "</copyright>")?;
     Ok(())
 }
@@ -229,21 +229,21 @@ fn write_email<W: Write>(w: &mut W, email: &Email) -> Result<(), GapixError> {
 
 fn write_link<W: Write>(w: &mut IndentWriter<W>, link: &Link) -> Result<(), GapixError> {
     writeln!(w, "<link href=\"{}\">", link.href)?;
-    w.inc();
+    w.indent();
     if let Some(text) = &link.text {
         writeln!(w, "<text>{}</text>", text)?;
     }
     if let Some(r#type) = &link.r#type {
         writeln!(w, "<type>{}</type>", r#type)?;
     }
-    w.dec();
+    w.outdent();
     writeln!(w, "</link>")?;
     Ok(())
 }
 
 fn write_route<W: Write>(w: &mut IndentWriter<W>, route: &Route) -> Result<(), GapixError> {
     writeln!(w, "<rte>")?;
-    w.inc();
+    w.indent();
     if let Some(name) = &route.name {
         writeln!(w, "<name>{}</name>", name)?;
     }
@@ -269,7 +269,7 @@ fn write_route<W: Write>(w: &mut IndentWriter<W>, route: &Route) -> Result<(), G
     for pt in &route.points {
         write_waypoint(w, pt, "rtept", OutputOptions::Full)?;
     }
-    w.dec();
+    w.outdent();
     writeln!(w, "</rte>")?;
     Ok(())
 }
@@ -280,7 +280,7 @@ fn write_track<W: Write>(
     output_options: OutputOptions,
 ) -> Result<(), GapixError> {
     writeln!(w, "<trk>")?;
-    w.inc();
+    w.indent();
     if let Some(name) = &track.name {
         writeln!(w, "<name>{}</name>", name)?;
     }
@@ -306,7 +306,7 @@ fn write_track<W: Write>(
     for segment in &track.segments {
         write_track_segment(w, segment, output_options)?;
     }
-    w.dec();
+    w.outdent();
     writeln!(w, "</trk>")?;
     Ok(())
 }
@@ -317,12 +317,12 @@ fn write_track_segment<W: Write>(
     output_options: OutputOptions,
 ) -> Result<(), GapixError> {
     writeln!(w, "<trkseg>")?;
-    w.inc();
+    w.indent();
     for p in &segment.points {
         write_waypoint(w, p, "trkpt", output_options)?;
     }
     write_extensions(w, &segment.extensions)?;
-    w.dec();
+    w.outdent();
     writeln!(w, "</trkseg>")?;
     Ok(())
 }
@@ -340,14 +340,14 @@ fn write_waypoint<W: Write>(
                 "<{element_name} lat=\"{:.6}\" lon=\"{:.6}\">",
                 point.lat, point.lon
             )?;
-            w.inc();
+            w.indent();
             if let Some(ele) = point.ele {
                 writeln!(w, "<ele>{:.1}</ele>", ele)?;
             }
             if let Some(t) = point.time {
                 writeln!(w, "<time>{}</time>", format_utc_date(&t)?)?;
             }
-            w.dec();
+            w.outdent();
             writeln!(w, "</{element_name}>")?;
             return Ok(());
         }
@@ -359,7 +359,7 @@ fn write_waypoint<W: Write>(
         "<{element_name} lat=\"{}\" lon=\"{}\">",
         point.lat, point.lon
     )?;
-    w.inc();
+    w.indent();
     if let Some(ele) = point.ele {
         writeln!(w, "<ele>{}</ele>", ele)?;
     }
@@ -415,7 +415,7 @@ fn write_waypoint<W: Write>(
         writeln!(w, "<dgpsid>{id}</dgpsid>")?;
     }
     write_extensions(w, &point.extensions)?;
-    w.dec();
+    w.outdent();
     writeln!(w, "</{element_name}>")?;
     Ok(())
 }
