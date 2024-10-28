@@ -10,7 +10,8 @@ use crate::{
 };
 
 use super::{
-    attributes::Attributes, extensions::parse_extensions, link::parse_link, XmlReaderExtensions,
+    attributes::Attributes, extensions::parse_extensions, link::parse_link,
+    trackpoint_extensions::parse_garmin_trackpoint_extensions, XmlReaderExtensions,
 };
 
 /// Parses a waypoint. Waypoints can appear under the 'gpx' tag, as part of a
@@ -89,6 +90,14 @@ pub(crate) fn parse_waypoint(
                 }
                 b"extensions" => {
                     wp.extensions = Some(parse_extensions(&start, xml_reader)?);
+                    if start_element.name().as_ref() == b"trkpt" {
+                        // TP Extensions only exist on waypoints within tracks.
+                        // Even then, they are optional.
+                        let s = &wp.extensions.as_ref()
+                            .expect("unwrap is safe due to just setting extensions to Some in line above")
+                            .raw_xml;
+                        wp.garmin_extensions = parse_garmin_trackpoint_extensions(s)?;
+                    }
                 }
                 e => return Err(GapixError::bad_start(e, xml_reader)),
             },

@@ -261,11 +261,13 @@ pub struct Waypoint {
     pub age_of_dgps_data: Option<f64>,
     /// ID of DGPS station used in differential correction.
     pub dgps_id: Option<u16>,
-    /// Arbitrary extended information. Represented as an unparsed string.
-    /// Garmin-specific trackpoint extensions as described at
-    /// https://www8.garmin.com/xmlschemas/TrackPointExtensionv1.xsd are parsed
-    /// into a separate field.
+    /// Arbitrary extended information. Represented as an unparsed string,
+    /// and holds the entire content within the &lt;extensions&gt; element.
     pub extensions: Option<Extensions>,
+    /// Returns the Garmin trackpoint extensions, if they exist. This
+    /// information is parsed out from the `extensions` field based on the XSD at
+    /// https://www8.garmin.com/xmlschemas/TrackPointExtensionv1.xsd
+    pub garmin_extensions: Option<GarminTrackpointExtensions>,
 }
 
 /// Type of GPS fix. none means GPS had no fix. To signify "the fix info is
@@ -333,9 +335,10 @@ pub struct EnrichedTrackPoint {
     pub ele: Option<f64>,
     /// The time as read from the <time> tag.
     pub time: Option<OffsetDateTime>,
+    /// The entire "extensions" element.
+    pub extensions: Option<Extensions>,
     /// The Garmin TrackPoint extensions.
-    pub extensions: Option<GarminTrackpointExtensions>,
-    pub extensions_new: Option<Extensions>,
+    pub garmin_extensions: Option<GarminTrackpointExtensions>,
 
     // All the below fields are the 'enriched' ones.
     /// The amount of time between this trackpoint and the previous one.

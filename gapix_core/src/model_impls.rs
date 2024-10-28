@@ -287,7 +287,7 @@ impl EnrichedGpx {
         let sum: f64 = self
             .points
             .iter()
-            .flat_map(|p| p.extensions.as_ref())
+            .flat_map(|p| p.garmin_extensions.as_ref())
             .flat_map(|ext| ext.air_temp)
             .sum();
 
@@ -303,7 +303,7 @@ impl EnrichedGpx {
         let sum: f64 = self
             .points
             .iter()
-            .flat_map(|p| p.extensions.as_ref())
+            .flat_map(|p| p.garmin_extensions.as_ref())
             .flat_map(|ext| ext.heart_rate.map(|hr| hr as f64))
             .sum();
 
@@ -417,8 +417,8 @@ impl EnrichedTrackPoint {
             lon: value.lon,
             ele: value.ele,
             time: value.time,
-            extensions: None,
-            extensions_new: value.extensions.clone(),
+            garmin_extensions: value.garmin_extensions.clone(),
+            extensions: value.extensions.clone(),
             delta_time: None,
             delta_metres: 0.0,
             running_metres: 0.0,
@@ -464,18 +464,20 @@ impl EnrichedTrackPoint {
     /// Convenience function to extract the air_temp from
     /// the Garmin extensions.
     pub fn air_temp(&self) -> Option<f64> {
-        self.extensions.as_ref().and_then(|ext| ext.air_temp)
+        self.garmin_extensions.as_ref().and_then(|ext| ext.air_temp)
     }
 
     /// Convenience function to extract the heart_rate from
     /// the Garmin extensions.
     pub fn heart_rate(&self) -> Option<u8> {
-        self.extensions.as_ref().and_then(|ext| ext.heart_rate)
+        self.garmin_extensions
+            .as_ref()
+            .and_then(|ext| ext.heart_rate)
     }
 
     /// Convenience function to extract the air_temp from
     /// the Garmin extensions.
     pub fn cadence(&self) -> Option<u8> {
-        self.extensions.as_ref().and_then(|ext| ext.cadence)
+        self.garmin_extensions.as_ref().and_then(|ext| ext.cadence)
     }
 }
