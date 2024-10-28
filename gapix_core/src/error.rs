@@ -10,6 +10,8 @@ pub enum GapixError {
     #[error(transparent)]
     XmlError(#[from] quick_xml::Error),
     #[error(transparent)]
+    XmlEncodingError(#[from] quick_xml::encoding::EncodingError),
+    #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Xlsx(#[from] rust_xlsxwriter::XlsxError),
