@@ -109,3 +109,59 @@ Or build from source using cargo.
 - GPX XSD: https://www.topografix.com/GPX/1/1/gpx.xsd
 - Trackpoint extensions XSD: https://www8.garmin.com/xmlschemas/TrackPointExtensionv1.xsd
 
+# Geocoding
+We might not need timezones.txt, it gives us the offset to apply. But the main file uses
+the timezone name as the key, e.g. (GB "Europe/London").
+
+The record for Bothamsall (tab separated):
+
+2655132	Bothamsall	Bothamsall	Bothamsall	53.25313	-0.98949	P	PPL	GB		ENG	J9	37UC	37UC008	0		45	Europe/London	2018-07-03
+
+
+geonameid         : integer id of record in geonames database
+name              : name of geographical point (utf8) varchar(200)
+asciiname         : name of geographical point in plain ascii characters, varchar(200)
+alternatenames    : alternatenames, comma separated, ascii names automatically transliterated, convenience attribute from alternatename table, varchar(10000)
+latitude          : latitude in decimal degrees (wgs84)
+longitude         : longitude in decimal degrees (wgs84)
+feature class     : see http://www.geonames.org/export/codes.html, char(1)
+feature code      : see http://www.geonames.org/export/codes.html, varchar(10)
+country code      : ISO-3166 2-letter country code, 2 characters
+cc2               : alternate country codes, comma separated, ISO-3166 2-letter country code, 200 characters
+admin1 code       : fipscode (subject to change to iso code), see exceptions below, see file admin1Codes.txt for display names of this code; varchar(20)
+admin2 code       : code for the second administrative division, a county in the US, see file admin2Codes.txt; varchar(80) 
+admin3 code       : code for third level administrative division, varchar(20)
+admin4 code       : code for fourth level administrative division, varchar(20)
+population        : bigint (8 byte int) 
+elevation         : in meters, integer
+dem               : digital elevation model, srtm3 or gtopo30, average elevation of 3''x3'' (ca 90mx90m) or 30''x30'' (ca 900mx900m) area in meters, integer. srtm processed by cgiar/ciat.
+timezone          : the iana timezone id (see file timeZone.txt) varchar(40)
+modification date : date of last modification in yyyy-MM-dd format
+
+P = feature class = city or village
+PPL = feature code = populated place
+GB = country code
+<missing> = cc2 alternate country code
+ENG = admin1 code = alternate country code (England)
+J9 = admin2 code. Full key is GB.ENG.J9 = Nottinghamshire
+37UC = admin3 code. 
+37UC008 = admin4 code.
+0 = population (not known I guess)
+45 = elevation in meters
+Europe/London = timezone
+
+
+Files we need to parse
+admin1codes - for the country. Key = GB.ENG, Value = GB.ENG	England	England	6269131
+admin2codes.txt - for the county. Key = GB.ENG.J9, Value = GB.ENG.J9	Nottinghamshire	Nottinghamshire	2641169
+countryinfo.txt - so we can get the continent
+allCountries.txt - for the detailed places. We only need:
+  - the name (priority to UTF-8, then ASCII, then alternate)
+  - the lat and lon
+  - country code ("GB"), admin1 code ("ENG"), admin3code ("37UC")
+  - timezone
+
+
+Restrict to UK, EUR, NA, SA, ASIA, WORLD
+Stats by country: http://www.geonames.org/statistics/
+
