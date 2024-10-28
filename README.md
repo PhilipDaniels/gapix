@@ -92,6 +92,7 @@ Or build from source using cargo.
 - Use Rayon - CAN'T - Time crate blows up in to_local_offset.
 - Change to use Chrono and Chrono-TZ? Probably. First need to be
   able to reverse geocode lat-lon to timezone name.
+- XLSX: Create images to represent the stage profiles.
 
 # Design Questions
 - I think it's technically wrong to simply merge all tracks and segments?
