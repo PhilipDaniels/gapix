@@ -82,8 +82,6 @@ Or build from source using cargo.
 * Has only been tested on my own GPX files from a Garmin Edge 1040.
 
 # TODO
-- Check EOFs everywhere?
-- Declaration bug?
 - Move model into its own crate.
 - Reverse geocode the stopped stages and the first and last point.
   Use a separate crate, maybe publish it.
@@ -93,6 +91,7 @@ Or build from source using cargo.
 - Change to use Chrono and Chrono-TZ? Probably. First need to be
   able to reverse geocode lat-lon to timezone name.
 - XLSX: Create images to represent the stage profiles.
+- XLSX: Display is wrong when time goes over 24 hours.
 
 # Design Questions
 - I think it's technically wrong to simply merge all tracks and segments?
@@ -158,10 +157,17 @@ countryinfo.txt - so we can get the continent
 allCountries.txt - for the detailed places. We only need:
   - the name (priority to UTF-8, then ASCII, then alternate)
   - the lat and lon
-  - country code ("GB"), admin1 code ("ENG"), admin3code ("37UC")
+  - country code ("GB"), admin1 code ("ENG"), admin3code ("J9" = Nottinghamshire)
   - timezone
 
 
 Restrict to UK, EUR, NA, SA, ASIA, WORLD
 Stats by country: http://www.geonames.org/statistics/
+
+Place Fields decode
+===================
+NAME                                            => "Bothamsall"
+COUNTRYCODE.ADMIN1.ADMIN2 (in admin2Codes.txt)  => "Nottinghamshire"
+COUNTRYCODE.ADMIN1 (in admin1CodesASCII.txt)    => "England"
+COUNTRYCODE (in countryInfo.txt)                => "United Kingdom" (also continent "Europe")
 

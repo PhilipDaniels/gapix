@@ -386,6 +386,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "geocoding"
+version = "0.1.0"
+dependencies = [
+ "clap",
+]
+
+[[package]]
 name = "geographiclib-rs"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
