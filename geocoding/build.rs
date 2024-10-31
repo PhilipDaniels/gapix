@@ -4,6 +4,20 @@ use std::{
     path::{Path, PathBuf},
 };
 
+// Hack to allow us to use same types at build time.
+#[path = "src/types.rs"]
+mod build_types;
+
+use crate::build_types::Continent;
+
+/// Represents a country as read from the file `countryInfo.txt`.
+#[derive(Debug, Clone)]
+struct OwnedCountry {
+    pub iso_code: String,
+    pub name: String,
+    pub continent: Continent,
+}
+
 fn main() {
     // Tell Cargo that if the given file changes, to rerun this build script.
     println!("cargo::rerun-if-changed=assets");
@@ -14,7 +28,151 @@ fn main() {
     pre_process_all_countries_file(&geo_filter);
 }
 
-fn get_geo_filter(countries: Vec<Country>) -> GeoFilter {
+fn pre_process_country_info_file() -> Vec<OwnedCountry> {
+    let mut countries = Vec::new();
+
+    let src_path = input_path("countryInfo.txt");
+    let src_file = File::open(&src_path).unwrap();
+    let rdr = BufReader::new(src_file);
+
+    let dest_path = output_path("countries.rs");
+    let dest_file = File::create(&dest_path).unwrap();
+    let mut writer = BufWriter::new(dest_file);
+    println!("Processing input file {src_path:?} to {dest_path:?}");
+
+    writeln!(&mut writer, "use crate::types::Continent;").unwrap();
+
+    writeln!(
+        &mut writer,
+        "static COUNTRIES: Map<&'static str, crate::types::Country> = phf_map! {{"
+    )
+    .unwrap();
+
+    for line in rdr.lines() {
+        let line = line.unwrap();
+        if line.starts_with('#') {
+            continue;
+        }
+
+        let fields: Vec<_> = line.split('\t').collect();
+        let iso_code = fields[0];
+        let name = fields[4];
+        let continent_code = fields[8];
+        if iso_code.is_empty() || name.is_empty() || continent_code.is_empty() {
+            println!("CountryInfo.txt: Skipping line due to one or more empty fields. iso_code={iso_code}, name={name}, continent_code={continent_code}");
+        } else {
+            let continent = Continent::try_from(continent_code).unwrap();
+            let continent_str = match continent {
+                Continent::Africa => "Continent::Africa",
+                Continent::Asia => "Continent::Asia",
+                Continent::Europe => "Continent::Europe",
+                Continent::NorthAmerica => "Continent::NorthAmerica",
+                Continent::Oceania => "Continent::Oceania",
+                Continent::SouthAmerica => "Continent::SouthAmerica",
+                Continent::Antarctica => "Continent::Antarctica",
+            };
+
+            writeln!(&mut writer, r#"    "{iso_code}" => Country {{ iso_code: "{iso_code}", name: "{name}", continent: {continent_str} }},"#).unwrap();
+
+            countries.push(OwnedCountry {
+                iso_code: iso_code.to_string(),
+                name: name.to_string(),
+                continent: continent,
+            });
+        }
+    }
+
+    writeln!(&mut writer, "}};").unwrap();
+
+    countries
+}
+
+fn pre_process_admin1codes_file(geo_filter: &GeoFilter) {
+    let src_path = input_path("admin1CodesASCII.txt");
+    let src_file = File::open(&src_path).unwrap();
+    let rdr = BufReader::new(src_file);
+
+    let dest_path = output_path("admin1CodesASCII.rs");
+    let dest_file = File::create(&dest_path).unwrap();
+    let mut writer = BufWriter::new(dest_file);
+    println!("Processing input file {src_path:?} to {dest_path:?}");
+
+    writeln!(&mut writer, "use ::phf::{{Map, phf_map}};").unwrap();
+    writeln!(&mut writer).unwrap();
+
+    writeln!(
+        &mut writer,
+        "static ADMIN_1_CODES: Map<&'static str, &'static str> = phf_map! {{"
+    )
+    .unwrap();
+
+    for line in rdr.lines() {
+        let line = line.unwrap();
+        let fields: Vec<_> = line.split('\t').collect();
+        let key = fields[0];
+        let isocode = &key[0..2];
+        if !geo_filter.include_country(isocode) {
+            continue;
+        }
+
+        let name = fields[1];
+        if key.is_empty() || name.is_empty() {
+            println!("Admin1Codes.txt: Skipping line due to one or more empty fields. key={key}, name={name}");
+        } else {
+            writeln!(&mut writer, r#"    "{key}" => "{name}","#).unwrap();
+        }
+    }
+
+    writeln!(&mut writer, "}};").unwrap();
+}
+
+fn pre_process_admin2codes_file(geo_filter: &GeoFilter) {
+    let src_path = input_path("admin2Codes.txt");
+    let src_file = File::open(&src_path).unwrap();
+    let rdr = BufReader::new(src_file);
+
+    let dest_path = output_path("admin2Codes.rs");
+    let dest_file = File::create(&dest_path).unwrap();
+    let mut writer = BufWriter::new(dest_file);
+    println!("Processing input file {src_path:?} to {dest_path:?}");
+
+    //writeln!(&mut writer, "use ::phf::{{Map, phf_map}};").unwrap();
+    writeln!(&mut writer).unwrap();
+
+    writeln!(
+        &mut writer,
+        "static ADMIN_2_CODES: Map<&'static str, &'static str> = phf_map! {{"
+    )
+    .unwrap();
+
+    for line in rdr.lines() {
+        let line = line.unwrap();
+        let fields: Vec<_> = line.split('\t').collect();
+        let key = fields[0];
+        let isocode = &key[0..2];
+        if !geo_filter.include_country(isocode) {
+            continue;
+        }
+
+        let name = fields[1];
+        if key.is_empty() || name.is_empty() {
+            println!("Admin2Codes.txt: Skipping line due to one or more empty fields. key={key}, name={name}");
+        } else {
+            writeln!(&mut writer, r#"    "{key}" => "{name}","#).unwrap();
+        }
+    }
+
+    writeln!(&mut writer, "}};").unwrap();
+}
+
+
+
+
+
+
+
+
+fn get_geo_filter(countries: Vec<OwnedCountry>) -> GeoFilter {
     let ctry_list = std::env::var_os("GAPIX_COUNTRIES")
         .unwrap_or_default()
         .to_string_lossy()
@@ -90,96 +248,11 @@ fn pre_process_all_countries_file(geo_filter: &GeoFilter) {
     }
 }
 
-fn pre_process_admin2codes_file(geo_filter: &GeoFilter) {
-    let src_path = input_path("admin2Codes.txt");
-    let src_file = File::open(src_path).unwrap();
-    let dest_path = output_path("admin2Codes.txt");
-    println!("Writing output file {dest_path:?}");
-    let dest_file = File::create(dest_path).unwrap();
-    let mut writer = BufWriter::new(dest_file);
-    let rdr = BufReader::new(src_file);
 
-    for line in rdr.lines() {
-        let line = line.unwrap();
-        let fields: Vec<_> = line.split('\t').collect();
-        let key = fields[0];
-        let isocode = &key[0..2];
-        if !geo_filter.include_country(isocode) {
-            continue;
-        }
 
-        let name = fields[1];
-        if key.is_empty() || name.is_empty() {
-            println!("Admin2Codes.txt: Skipping line due to one or more empty fields. key={key}, name={name}");
-        } else {
-            writeln!(&mut writer, "{key}\t{name}").unwrap();
-        }
-    }
-}
 
-fn pre_process_admin1codes_file(geo_filter: &GeoFilter) {
-    let src_path = input_path("admin1CodesASCII.txt");
-    let src_file = File::open(src_path).unwrap();
-    let dest_path = output_path("admin1CodesASCII.txt");
-    println!("Writing output file {dest_path:?}");
-    let dest_file = File::create(dest_path).unwrap();
-    let mut writer = BufWriter::new(dest_file);
-    let rdr = BufReader::new(src_file);
 
-    for line in rdr.lines() {
-        let line = line.unwrap();
-        let fields: Vec<_> = line.split('\t').collect();
-        let key = fields[0];
-        let isocode = &key[0..2];
-        if !geo_filter.include_country(isocode) {
-            continue;
-        }
 
-        let name = fields[1];
-        if key.is_empty() || name.is_empty() {
-            println!("Admin1Codes.txt: Skipping line due to one or more empty fields. key={key}, name={name}");
-        } else {
-            writeln!(&mut writer, "{key}\t{name}").unwrap();
-        }
-    }
-}
-
-fn pre_process_country_info_file() -> Vec<Country> {
-    let mut countries = Vec::new();
-
-    let src_path = input_path("countryInfo.txt");
-    let src_file = File::open(src_path).unwrap();
-    let dest_path = output_path("countryInfo.txt");
-    println!("Writing output file {dest_path:?}");
-    let dest_file = File::create(dest_path).unwrap();
-    let mut writer = BufWriter::new(dest_file);
-    let rdr = BufReader::new(src_file);
-
-    for line in rdr.lines() {
-        let line = line.unwrap();
-        if line.starts_with('#') {
-            continue;
-        }
-
-        let fields: Vec<_> = line.split('\t').collect();
-        let iso_code = fields[0];
-        let name = fields[4];
-        let continent_code = fields[8];
-        if iso_code.is_empty() || name.is_empty() || continent_code.is_empty() {
-            println!("CountryInfo.txt: Skipping line due to one or more empty fields. iso_code={iso_code}, name={name}, continent_code={continent_code}");
-        } else {
-            writeln!(&mut writer, "{iso_code}\t{name}\t{continent_code}").unwrap();
-
-            countries.push(Country {
-                iso_code: iso_code.to_string(),
-                name: name.to_string(),
-                continent: Continent::try_from(continent_code).unwrap(),
-            });
-        }
-    }
-
-    countries
-}
 
 /// Returns the output path for a particular filename.
 fn output_path<P: AsRef<Path>>(filename: P) -> PathBuf {
@@ -202,7 +275,7 @@ fn assets_dir() -> PathBuf {
 struct GeoFilter {
     required_countries: Vec<String>,
     required_continents: Vec<String>,
-    country_list: Vec<Country>,
+    country_list: Vec<OwnedCountry>,
 }
 
 impl GeoFilter {
@@ -232,61 +305,4 @@ impl GeoFilter {
 
         false
     }
-}
-
-#[derive(Debug, Copy, Clone)]
-enum Continent {
-    // Code = AF
-    Africa,
-    // Code = AS
-    Asia,
-    // Code = EU
-    Europe,
-    // Code = NA
-    NorthAmerica,
-    // Code = OC
-    Oceania,
-    // Code = SA
-    SouthAmerica,
-    // Code = AN
-    Antarctica,
-}
-
-impl Continent {
-    fn as_str(&self) -> &'static str {
-        match self {
-            Continent::Africa => "AF",
-            Continent::Asia => "AS",
-            Continent::Europe => "EU",
-            Continent::NorthAmerica => "NA",
-            Continent::Oceania => "OC",
-            Continent::SouthAmerica => "SA",
-            Continent::Antarctica => "AN",
-        }
-    }
-}
-
-impl TryFrom<&str> for Continent {
-    type Error = String;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            "AF" => Ok(Continent::Africa),
-            "AS" => Ok(Continent::Asia),
-            "EU" => Ok(Continent::Europe),
-            "NA" => Ok(Continent::NorthAmerica),
-            "OC" => Ok(Continent::Oceania),
-            "SA" => Ok(Continent::SouthAmerica),
-            "AN" => Ok(Continent::Antarctica),
-            _ => Err(format!("Invalid continent code {value}")),
-        }
-    }
-}
-
-/// Represents a country as read from the file `countryInfo.txt`.
-#[derive(Debug, Clone)]
-struct Country {
-    iso_code: String,
-    name: String,
-    continent: Continent,
 }

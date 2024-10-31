@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+phf = { version = "0.11", features = ["macros"] }
 
 [build-dependencies]
 clap = { workspace = true }
+#phf = { version = "0.11", features = ["macros"] }
+#phf_codegen = "0.11.1"
