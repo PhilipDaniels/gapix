@@ -4,18 +4,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-// Hack to allow us to use same types at build time.
-#[path = "src/types.rs"]
-mod build_types;
-
-use crate::build_types::Continent;
-
-/// Represents a country as read from the file `countryInfo.txt`.
 #[derive(Debug, Clone)]
 struct OwnedCountry {
-    pub iso_code: String,
-    pub name: String,
-    pub continent: Continent,
+    iso_code: String,
+    continent: String
 }
 
 fn main() {
@@ -40,11 +32,9 @@ fn pre_process_country_info_file() -> Vec<OwnedCountry> {
     let mut writer = BufWriter::new(dest_file);
     println!("Processing input file {src_path:?} to {dest_path:?}");
 
-    writeln!(&mut writer, "use crate::types::Continent;").unwrap();
-
     writeln!(
         &mut writer,
-        "static COUNTRIES: Map<&'static str, crate::types::Country> = phf_map! {{"
+        "static COUNTRIES: Map<&'static str, crate::Country> = phf_map! {{"
     )
     .unwrap();
 
@@ -61,23 +51,23 @@ fn pre_process_country_info_file() -> Vec<OwnedCountry> {
         if iso_code.is_empty() || name.is_empty() || continent_code.is_empty() {
             println!("CountryInfo.txt: Skipping line due to one or more empty fields. iso_code={iso_code}, name={name}, continent_code={continent_code}");
         } else {
-            let continent = Continent::try_from(continent_code).unwrap();
-            let continent_str = match continent {
-                Continent::Africa => "Continent::Africa",
-                Continent::Asia => "Continent::Asia",
-                Continent::Europe => "Continent::Europe",
-                Continent::NorthAmerica => "Continent::NorthAmerica",
-                Continent::Oceania => "Continent::Oceania",
-                Continent::SouthAmerica => "Continent::SouthAmerica",
-                Continent::Antarctica => "Continent::Antarctica",
+            //let continent = Continent::try_from(continent_code).unwrap();
+            let continent_str = match continent_code {
+                "AF" => "Continent::Africa",
+                "AS" => "Continent::Asia",
+                "EU" => "Continent::Europe",
+                "NA" => "Continent::NorthAmerica",
+                "OC" => "Continent::Oceania",
+                "SA" => "Continent::SouthAmerica",
+                "AN" => "Continent::Antarctica",
+                _ => panic!("Unknown continent {continent_code}"),
             };
 
             writeln!(&mut writer, r#"    "{iso_code}" => Country {{ iso_code: "{iso_code}", name: "{name}", continent: {continent_str} }},"#).unwrap();
 
             countries.push(OwnedCountry {
                 iso_code: iso_code.to_string(),
-                name: name.to_string(),
-                continent: continent,
+                continent: continent_code.to_string(),
             });
         }
     }
@@ -136,7 +126,6 @@ fn pre_process_admin2codes_file(geo_filter: &GeoFilter) {
     let mut writer = BufWriter::new(dest_file);
     println!("Processing input file {src_path:?} to {dest_path:?}");
 
-    //writeln!(&mut writer, "use ::phf::{{Map, phf_map}};").unwrap();
     writeln!(&mut writer).unwrap();
 
     writeln!(
@@ -164,13 +153,6 @@ fn pre_process_admin2codes_file(geo_filter: &GeoFilter) {
 
     writeln!(&mut writer, "}};").unwrap();
 }
-
-
-
-
-
-
-
 
 fn get_geo_filter(countries: Vec<OwnedCountry>) -> GeoFilter {
     let ctry_list = std::env::var_os("GAPIX_COUNTRIES")
@@ -248,12 +230,6 @@ fn pre_process_all_countries_file(geo_filter: &GeoFilter) {
     }
 }
 
-
-
-
-
-
-
 /// Returns the output path for a particular filename.
 fn output_path<P: AsRef<Path>>(filename: P) -> PathBuf {
     let out_dir = std::env::var_os("OUT_DIR").unwrap();
@@ -296,7 +272,7 @@ impl GeoFilter {
         if !self.required_continents.is_empty() {
             if let Some(country) = self.country_list.iter().find(|c| c.iso_code == isocode) {
                 for rc in &self.required_continents {
-                    if rc == country.continent.as_str() {
+                    if *rc == country.continent {
                         return true;
                     }
                 }
