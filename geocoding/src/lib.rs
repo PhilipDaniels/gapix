@@ -1,3 +1,5 @@
+use phf::{Map, phf_map};
+
 include!(concat!(env!("OUT_DIR"), "/admin1CodesASCII.rs"));
 include!(concat!(env!("OUT_DIR"), "/admin2Codes.rs"));
 include!(concat!(env!("OUT_DIR"), "/countries.rs"));

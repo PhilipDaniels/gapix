@@ -86,8 +86,6 @@ fn pre_process_admin1codes_file(geo_filter: &GeoFilter) {
     let dest_file = File::create(&dest_path).unwrap();
     let mut writer = BufWriter::new(dest_file);
     println!("Processing input file {src_path:?} to {dest_path:?}");
-
-    writeln!(&mut writer, "use ::phf::{{Map, phf_map}};").unwrap();
     writeln!(&mut writer).unwrap();
 
     writeln!(
