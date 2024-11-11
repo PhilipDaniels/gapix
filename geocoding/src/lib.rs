@@ -3,6 +3,7 @@ use phf::{Map, phf_map};
 include!(concat!(env!("OUT_DIR"), "/admin1CodesASCII.rs"));
 include!(concat!(env!("OUT_DIR"), "/admin2Codes.rs"));
 include!(concat!(env!("OUT_DIR"), "/countries.rs"));
+include!(concat!(env!("OUT_DIR"), "/places.rs"));
 
 pub fn get_country(iso_code: &str) -> Option<&Country> {
     COUNTRIES.get(iso_code)
@@ -87,7 +88,17 @@ impl std::hash::Hash for Country {
     }
 }
 
-
+/// Represents a place as read from the file 'allCountries.txt'.
+#[derive(Debug, Clone)]
+pub struct Place {
+    pub name: &'static str,
+    pub lat: f32,
+    pub lon: f32,
+    pub iso_code: &'static str,
+    pub admin1: &'static str,
+    pub admin2: &'static str,
+    pub timezone: &'static str,
+}
 
 #[cfg(test)]
 mod tests {

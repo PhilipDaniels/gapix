@@ -4,6 +4,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use zip::{write::SimpleFileOptions, ZipWriter};
+
 #[derive(Debug, Clone)]
 struct OwnedCountry {
     iso_code: String,
@@ -124,8 +126,6 @@ fn pre_process_admin2codes_file(geo_filter: &GeoFilter) {
     let mut writer = BufWriter::new(dest_file);
     println!("Processing input file {src_path:?} to {dest_path:?}");
 
-    writeln!(&mut writer).unwrap();
-
     writeln!(
         &mut writer,
         "static ADMIN_2_CODES: Map<&'static str, &'static str> = phf_map! {{"
@@ -187,13 +187,19 @@ fn get_geo_filter(countries: Vec<OwnedCountry>) -> GeoFilter {
 }
 
 fn pre_process_all_countries_file(geo_filter: &GeoFilter) {
+    let dest_path = create_places_file(geo_filter);
+    zip_places_file(&dest_path);
+}
+
+fn create_places_file(geo_filter: &GeoFilter) -> PathBuf {
     let src_path = input_path("allCountries.txt");
     let src_file = File::open(src_path).unwrap();
-    let dest_path = output_path("allCountries.txt");
-    println!("Writing output file {dest_path:?}");
-    let dest_file = File::create(dest_path).unwrap();
-    let mut writer = BufWriter::new(dest_file);
     let rdr = BufReader::new(src_file);
+
+    let dest_path = output_path("places.txt");
+    println!("Writing output file {dest_path:?}");
+    let dest_file = File::create(&dest_path).unwrap();
+    let mut writer = BufWriter::new(dest_file);
 
     for line in rdr.lines() {
         let line = line.unwrap();
@@ -217,7 +223,7 @@ fn pre_process_all_countries_file(geo_filter: &GeoFilter) {
         let timezone = fields[17];
 
         if name.is_empty() || isocode.is_empty() {
-            //println!("allCountries.txt: Skipping line due to empty name or country_code. name={name}, isocode={isocode}, admin1={admin1}, admin2={admin2}, timezone={timezone}");
+            //println!("places.txt: Skipping line due to empty name or country_code. name={name}, isocode={isocode}, admin1={admin1}, admin2={admin2}, timezone={timezone}");
         } else {
             writeln!(
                 &mut writer,
@@ -226,6 +232,39 @@ fn pre_process_all_countries_file(geo_filter: &GeoFilter) {
             .unwrap();
         }
     }
+
+    dest_path
+}
+
+fn zip_places_file(path: &Path) {
+    let src_file = File::open(path).unwrap();
+    let mut src_reader = BufReader::new(src_file);
+
+    let mut path = path.to_owned();
+    path.set_extension("zip");
+
+    let dest_file = File::create(&path).unwrap();
+    let writer = BufWriter::new(&dest_file);
+    let writer = ByteCounter::new(writer);
+    let options = SimpleFileOptions::default();
+    let mut zip = ZipWriter::new(writer);
+    zip.start_file("places.txt", options).unwrap();
+    std::io::copy(&mut src_reader, &mut zip).unwrap();
+    let byte_counter = zip.finish().unwrap();
+    
+    let dest_path = output_path("places.rs");
+    let dest_file = File::create(&dest_path).unwrap();
+    let mut writer = BufWriter::new(dest_file);
+
+    writeln!(
+        &mut writer,
+        "static PLACES: &'static [u8; {}] = include_bytes!({:?});",
+        byte_counter.bytes_written() - 12,
+        &path
+    )
+    .unwrap();
+
+    writer.flush().unwrap();
 }
 
 /// Returns the output path for a particular filename.
@@ -278,5 +317,56 @@ impl GeoFilter {
         }
 
         false
+    }
+}
+
+
+use std::io::{self, Seek};
+
+pub(crate) struct ByteCounter<W> {
+    inner: W,
+    count: usize,
+}
+
+impl<W> ByteCounter<W>
+where
+    W: Write,
+{
+    pub(crate) fn new(inner: W) -> Self {
+        ByteCounter { inner, count: 0 }
+    }
+
+    // fn into_inner(self) -> W {
+    //     self.inner
+    // }
+
+    pub(crate) fn bytes_written(&self) -> usize {
+        self.count
+    }
+}
+
+impl<W> Write for ByteCounter<W>
+where
+    W: Write,
+{
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let res = self.inner.write(buf);
+        if let Ok(size) = res {
+            self.count += size
+        }
+        res
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.inner.flush()
+    }
+}
+
+impl<W> Seek for ByteCounter<W>
+where
+    W: Seek,
+{
+    fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
+        self.inner.seek(pos)
     }
 }

@@ -5,3 +5,6 @@ edition = "2021"
 
 [dependencies]
 phf = { version = "0.11", features = ["macros"] }
+
+[build-dependencies]
+zip = { workspace = true }
