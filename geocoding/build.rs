@@ -4,8 +4,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use zip::{write::SimpleFileOptions, ZipWriter};
-
 #[derive(Debug, Clone)]
 struct OwnedCountry {
     iso_code: String,
@@ -19,7 +17,6 @@ fn main() {
     let geo_filter = get_geo_filter(countries);
     pre_process_admin1codes_file(&geo_filter);
     pre_process_admin2codes_file(&geo_filter);
-    pre_process_all_countries_file(&geo_filter);
 }
 
 fn pre_process_country_info_file() -> Vec<OwnedCountry> {
@@ -186,86 +183,6 @@ fn get_geo_filter(countries: Vec<OwnedCountry>) -> GeoFilter {
     }
 }
 
-fn pre_process_all_countries_file(geo_filter: &GeoFilter) {
-    let dest_path = create_places_file(geo_filter);
-    zip_places_file(&dest_path);
-}
-
-fn create_places_file(geo_filter: &GeoFilter) -> PathBuf {
-    let src_path = input_path("allCountries.txt");
-    let src_file = File::open(src_path).unwrap();
-    let rdr = BufReader::new(src_file);
-
-    let dest_path = output_path("places.txt");
-    println!("Writing output file {dest_path:?}");
-    let dest_file = File::create(&dest_path).unwrap();
-    let mut writer = BufWriter::new(dest_file);
-
-    for line in rdr.lines() {
-        let line = line.unwrap();
-        let fields: Vec<_> = line.split('\t').collect();
-        let isocode = fields[8];
-        if !geo_filter.include_country(isocode) {
-            continue;
-        }
-
-        let mut name = fields[1].to_string();
-        if name.is_empty() {
-            name = fields[2].to_string();
-        }
-        let lat: f64 = fields[4].parse().unwrap();
-        let lon: f64 = fields[5].parse().unwrap();
-        let _feature_class = fields[6];
-        let _feature_code = fields[7];
-
-        let admin1 = fields[10];
-        let admin2 = fields[11];
-        let timezone = fields[17];
-
-        if name.is_empty() || isocode.is_empty() {
-            //println!("places.txt: Skipping line due to empty name or country_code. name={name}, isocode={isocode}, admin1={admin1}, admin2={admin2}, timezone={timezone}");
-        } else {
-            writeln!(
-                &mut writer,
-                "{name}\t{lat}\t{lon}\t{isocode}\t{admin1}\t{admin2}\t{timezone}"
-            )
-            .unwrap();
-        }
-    }
-
-    dest_path
-}
-
-fn zip_places_file(path: &Path) {
-    let src_file = File::open(path).unwrap();
-    let mut src_reader = BufReader::new(src_file);
-
-    let mut path = path.to_owned();
-    path.set_extension("zip");
-
-    let dest_file = File::create(&path).unwrap();
-    let writer = BufWriter::new(&dest_file);
-    let writer = ByteCounter::new(writer);
-    let options = SimpleFileOptions::default();
-    let mut zip = ZipWriter::new(writer);
-    zip.start_file("places.txt", options).unwrap();
-    std::io::copy(&mut src_reader, &mut zip).unwrap();
-    let byte_counter = zip.finish().unwrap();
-    
-    let dest_path = output_path("places.rs");
-    let dest_file = File::create(&dest_path).unwrap();
-    let mut writer = BufWriter::new(dest_file);
-
-    writeln!(
-        &mut writer,
-        "static PLACES: &'static [u8; {}] = include_bytes!({:?});",
-        byte_counter.bytes_written() - 12,
-        &path
-    )
-    .unwrap();
-
-    writer.flush().unwrap();
-}
 
 /// Returns the output path for a particular filename.
 fn output_path<P: AsRef<Path>>(filename: P) -> PathBuf {
@@ -317,56 +234,5 @@ impl GeoFilter {
         }
 
         false
-    }
-}
-
-
-use std::io::{self, Seek};
-
-pub(crate) struct ByteCounter<W> {
-    inner: W,
-    count: usize,
-}
-
-impl<W> ByteCounter<W>
-where
-    W: Write,
-{
-    pub(crate) fn new(inner: W) -> Self {
-        ByteCounter { inner, count: 0 }
-    }
-
-    // fn into_inner(self) -> W {
-    //     self.inner
-    // }
-
-    pub(crate) fn bytes_written(&self) -> usize {
-        self.count
-    }
-}
-
-impl<W> Write for ByteCounter<W>
-where
-    W: Write,
-{
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let res = self.inner.write(buf);
-        if let Ok(size) = res {
-            self.count += size
-        }
-        res
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        self.inner.flush()
-    }
-}
-
-impl<W> Seek for ByteCounter<W>
-where
-    W: Seek,
-{
-    fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
-        self.inner.seek(pos)
     }
 }

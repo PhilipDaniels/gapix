@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["gapix_core", "gapix", "geocoding"]
+members = ["gapix_core", "gapix", "geocoding", "geocoding_places"]
 
 [workspace.dependencies]
 anyhow = { version = "1.0.89", features = ["backtrace"] }
@@ -9,7 +9,6 @@ env_logger = "0.11.5"
 log = "0.4.22"
 logging_timer = "1.1.1"
 thiserror = "1.0.64"
-zip = "2.2.0"
 
 [profile.release]
 lto = true

@@ -3,7 +3,6 @@ use phf::{Map, phf_map};
 include!(concat!(env!("OUT_DIR"), "/admin1CodesASCII.rs"));
 include!(concat!(env!("OUT_DIR"), "/admin2Codes.rs"));
 include!(concat!(env!("OUT_DIR"), "/countries.rs"));
-include!(concat!(env!("OUT_DIR"), "/places.rs"));
 
 pub fn get_country(iso_code: &str) -> Option<&Country> {
     COUNTRIES.get(iso_code)
