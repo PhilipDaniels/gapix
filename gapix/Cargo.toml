@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true }
+directories = "5.0.1"
 env_logger = { workspace = true }
 gapix_core = { path = "../gapix_core" }
 log = { workspace = true }

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["gapix_core", "gapix", "geocoding", "geocoding_places"]
+members = ["gapix_core", "gapix"]
 
 [workspace.dependencies]
 anyhow = { version = "1.0.89", features = ["backtrace"] }

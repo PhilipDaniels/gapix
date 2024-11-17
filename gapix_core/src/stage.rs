@@ -11,7 +11,7 @@ use log::{debug, info, warn};
 use logging_timer::time;
 use time::{Duration, OffsetDateTime};
 
-use crate::model::{EnrichedGpx, EnrichedTrackPoint};
+use crate::{geocoding::reverse_geocode_latlon, model::{EnrichedGpx, EnrichedTrackPoint}};
 
 /// Calculates speed in km/h from metres and seconds.
 pub fn speed_kmh(metres: f64, seconds: f64) -> f64 {
@@ -570,8 +570,6 @@ pub fn detect_stages(gpx: &EnrichedGpx, params: StageDetectionParameters) -> Sta
         );
     }
 
-    geocode_stages(&mut stages);
-    
     stages
 }
 
@@ -981,4 +979,5 @@ fn reverse_geocode_stage(stage: &mut Stage) {
 }
 
 fn reverse_geocode_point(point: &mut EnrichedTrackPoint) {
+    point.location = reverse_geocode_latlon((point.lat, point.lon));
 }

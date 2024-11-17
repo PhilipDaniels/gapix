@@ -88,6 +88,27 @@ pub struct Args {
     pub trackpoint_hyperlinks: bool,
 
     #[arg(
+        short = 'c',
+        long,
+        help = "A comma-separated list of 2-letter country isocodes for which to perform reverse geocoding when \
+        analysing stages. Reverse geocoding is the process of looking up a place from a lat-lon coordinate. \
+        Set this to blank to turn off geocoding altogether. n.b. The isocode for the UK is 'GB'.",
+        default_value = "GB",
+        num_args=1..,
+        value_delimiter=','
+    )]
+    pub countries: Vec<String>,
+
+    #[arg(
+        short = 'd',
+        long,
+        help = "When reverse geocoding points, re-download files from geonames.org even if they already exist. This \
+        is a way of keeping the files up to date. It is not necessary to do this often because new settlements \
+        are created infrequently."
+    )]
+    pub force_geonames_download: bool,
+
+    #[arg(
         help = "List of files to process. Any file that does not have a 'gpx' extension will be ignored."
     )]
     files: Vec<PathBuf>,

@@ -1,14 +1,10 @@
 use anyhow::{Context, Ok, Result};
 use args::{get_required_outputs, parse_args, Args, RequiredOutputFiles};
 use clap::builder::styling::AnsiColor;
+use directories::ProjectDirs;
 use env_logger::Builder;
 use gapix_core::{
-    excel::{create_summary_xlsx, write_summary_to_file, Hyperlink},
-    gpx_writer::{write_gpx_to_file, OutputOptions},
-    model::Gpx,
-    read::read_gpx_from_file,
-    simplification::{metres_to_epsilon, reduce_trackpoints_by_rdp},
-    stage::{detect_stages, StageDetectionParameters},
+    excel::{create_summary_xlsx, write_summary_to_file, Hyperlink}, geocoding::{initialise_geocoding, GeocodingOptions}, gpx_writer::{write_gpx_to_file, OutputOptions}, model::Gpx, read::read_gpx_from_file, simplification::{metres_to_epsilon, reduce_trackpoints_by_rdp}, stage::{detect_stages, StageDetectionParameters}
 };
 use join::join_input_files;
 use log::{debug, info, logger, warn};
@@ -29,6 +25,15 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+fn get_geocoding_options(args: &Args) -> GeocodingOptions {
+    let dirs = ProjectDirs::from("", "", env!("CARGO_PKG_NAME"));
+    GeocodingOptions {
+        download_folder: dirs.map(|d| d.config_local_dir().to_path_buf()),
+        countries: args.countries.clone(),
+        force_download: args.force_geonames_download,
+    }
+}
+
 #[time]
 fn main2() -> Result<()> {
     info!("Starting {PROGRAM_NAME}");
@@ -46,6 +51,9 @@ fn main2() -> Result<()> {
         warn!("No .gpx files specified, exiting");
         return Ok(());
     }
+    
+    let geo_opt = get_geocoding_options(&args);
+    initialise_geocoding(&geo_opt);
 
     // In join mode we join all the input files into a single file
     // and then process it. There is nothing to be done after that.
