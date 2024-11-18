@@ -158,9 +158,10 @@ fn configure_logging() {
         match (record.file(), record.line()) {
             (Some(file), Some(line)) => writeln!(
                 buf,
-                "[{} {level_style}{}{level_style:#} {}/{line_number_style}{}{line_number_style:#}] {}",
-                buf.timestamp(),
+                "[{} {level_style}{}{level_style:#} [{}] {}/{line_number_style}{}{line_number_style:#}] {}",
+                buf.timestamp_micros(),
                 record.level(),
+                record.target(),
                 file,
                 line,
                 record.args()
@@ -168,7 +169,7 @@ fn configure_logging() {
             (Some(file), None) => writeln!(
                 buf,
                 "[{} {level_style}{}{level_style:#} {}] {}",
-                buf.timestamp(),
+                buf.timestamp_micros(),
                 record.level(),
                 file,
                 record.args()
@@ -176,14 +177,14 @@ fn configure_logging() {
             (None, Some(_line)) => writeln!(
                 buf,
                 "[{} {level_style}{}{level_style:#}] {}",
-                buf.timestamp(),
+                buf.timestamp_micros(),
                 record.level(),
                 record.args()
             ),
             (None, None) => writeln!(
                 buf,
                 "[{} {level_style}{}{level_style:#}] {}",
-                buf.timestamp(),
+                buf.timestamp_micros(),
                 record.level(),
                 record.args()
             ),

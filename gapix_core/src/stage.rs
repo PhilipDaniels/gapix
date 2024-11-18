@@ -967,17 +967,17 @@ fn classify_stage(start_point: &EnrichedTrackPoint, last_point: &EnrichedTrackPo
 /// Reverse geocode all the interesting points in the stage.
 /// Reverse geocode means "given lat-lon, find the place".
 fn reverse_geocode_stage(stage: &mut Stage) {
-    reverse_geocode_point(&mut stage.track_start_point);
+    //reverse_geocode_point(&mut stage.track_start_point);
     reverse_geocode_point(&mut stage.start);
     reverse_geocode_point(&mut stage.end);
-    stage.min_elevation.as_mut().map(|mut p| reverse_geocode_point(&mut p));
-    stage.max_elevation.as_mut().map(|mut p| reverse_geocode_point(&mut p));
-    stage.max_speed.as_mut().map(|mut p| reverse_geocode_point(&mut p));
-    stage.max_heart_rate.as_mut().map(|mut p| reverse_geocode_point(&mut p));
-    stage.min_air_temp.as_mut().map(|mut p| reverse_geocode_point(&mut p));
-    stage.max_air_temp.as_mut().map(|mut p| reverse_geocode_point(&mut p));
+    //stage.min_elevation.as_mut().map(|mut p| reverse_geocode_point(&mut p));
+    //stage.max_elevation.as_mut().map(|mut p| reverse_geocode_point(&mut p));
+    //stage.max_speed.as_mut().map(|mut p| reverse_geocode_point(&mut p));
+    //stage.max_heart_rate.as_mut().map(|mut p| reverse_geocode_point(&mut p));
+    //stage.min_air_temp.as_mut().map(|mut p| reverse_geocode_point(&mut p));
+    //stage.max_air_temp.as_mut().map(|mut p| reverse_geocode_point(&mut p));
 }
 
 fn reverse_geocode_point(point: &mut EnrichedTrackPoint) {
-    point.location = reverse_geocode_latlon((point.lat, point.lon));
+    point.location = reverse_geocode_latlon(point.as_rtree_point());
 }

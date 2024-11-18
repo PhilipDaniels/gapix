@@ -3,16 +3,33 @@ use std::{
     fs::{self, File},
     io::{BufRead, BufReader, Write},
     path::{Path, PathBuf},
-    sync::OnceLock,
-    thread::JoinHandle,
+    sync::{LazyLock, OnceLock},
 };
 
 use geo::{point, GeodesicDistance};
 use log::{debug, info, warn};
-use logging_timer::time;
+use logging_timer::{stime, time};
 use rstar::{PointDistance, RTree, RTreeObject, AABB};
 
 use crate::byte_counter::ByteCounter;
+
+static OPTIONS: OnceLock<GeocodingOptions> = OnceLock::new();
+
+/// A map of isocode -> Country.
+static COUNTRIES: LazyLock<HashMap<String, Country>> = LazyLock::new(|| load_countries());
+
+/// Given key, return the first-level country subdivision.
+/// e.g. for "GB.ENG" return "England".
+/// In the US this would be a state.
+static ADMIN_1_CODES: LazyLock<HashMap<String, String>> = LazyLock::new(|| load_admin_1_codes());
+
+/// Given key, return the second-level country subdivision.
+/// e.g. for "GB.ENG.J9" return "Nottinghamshire".
+static ADMIN_2_CODES: LazyLock<HashMap<String, String>> = LazyLock::new(|| load_admin_2_codes());
+
+/// The lowest level of places - towns, mountains, parks etc.
+/// This is where reverse-geocoding begins.
+static PLACES2: LazyLock<RTree<Place>> = LazyLock::new(|| load_places());
 
 /// Initialises the geocoding system. This involves downloading, filtering and
 /// loading various files from geonames.org. This is done on background threads
@@ -24,41 +41,43 @@ pub fn initialise_geocoding(options: &GeocodingOptions) {
         fs::create_dir_all(p).unwrap();
     }
 
-    let h1 = load_countries(options.clone());
-    let h2 = load_admin_1_codes(options.clone());
-    let h3 = load_admin_2_codes(options.clone());
-    let h4 = load_places(options.clone());
+    // Clone `options` and stuff it somewhere that other threads can use it.
+    // This runs on the main thread and is very quick, so we can assume in the
+    // loading threads that the value is set (i.e. we can just unwrap).
+    //
+    // This is to work around the fact that OnceLock::get() does not block, see
+    // the unstabilized API: `wait()` which we would prefer to use instead.
+    // Since that doesn't exist, we need to replace our static OnceLocks with
+    // LazyLocks which *do* block while they are being initialized. And to do
+    // that we need to find some way to pass the options into the LazyLock's
+    // `new` function, which is a closure which doesn't normally accept
+    // parameters. And this is how we do that!
+    OPTIONS
+        .set(options.clone())
+        .expect("Setting global GeocodingOptions should work");
+    let options = OPTIONS.get();
+    assert!(options.is_some());
 
-    // TODO: For now, join all the threads so that the time library doesn't blow
-    // up (it only works in single-threaded programs).
-    h1.join().unwrap();
-    h2.join().unwrap();
-    h3.join().unwrap();
-    h4.join().unwrap();
+    // Spawn some background threads to "get" these statics right away. This
+    // will cause the load process to actually run as soon as possible,
+    // hopefully before the data is actually needed by the main thread.
+    std::thread::spawn(|| {
+        let _ = &*PLACES2;
+    });
+
+    std::thread::spawn(|| {
+        let _ = &*ADMIN_2_CODES;
+    });
+
+    // TODO: Either use or remove the other statics.
 }
-
-/// Map of countries indexed by 2-letter isocode.
-static COUNTRIES: OnceLock<HashMap<String, Country>> = OnceLock::new();
-
-/// Given key, return the first-level country subdivision.
-/// e.g. for "GB.ENG" return "England".
-/// In the US this would be a state.
-static ADMIN_1_CODES: OnceLock<HashMap<String, String>> = OnceLock::new();
-
-/// Given key, return the second-level country subdivision.
-/// e.g. for "GB.ENG.J9" return "Nottinghamshire".
-static ADMIN_2_CODES: OnceLock<HashMap<String, String>> = OnceLock::new();
-
-/// The lowest level of places - towns, mountains, parks etc.
-/// This is where reverse-geocoding begins.
-static PLACES: OnceLock<RTree<Place>> = OnceLock::new();
 
 /// Given a (lat, lon) finds the nearest place and returns a description of it.
 #[time]
-pub fn reverse_geocode_latlon((lat, lon): (f64, f64)) -> Option<String> {
+pub fn reverse_geocode_latlon(point: RTreePoint) -> Option<String> {
     // Lookup this (lat,lon) in the R*Tree to find the Place.
-    let tree = PLACES.get().unwrap();
-    let place = tree.nearest_neighbor(&[lat, lon]);
+    //let tree = PLACES2.get().unwrap();
+    let place = PLACES2.nearest_neighbor(&point);
     if place.is_none() {
         return None;
     }
@@ -69,27 +88,27 @@ pub fn reverse_geocode_latlon((lat, lon): (f64, f64)) -> Option<String> {
     let key = format!("{}.{}.{}", place.iso_code, place.admin1, place.admin2);
     match get_admin2_code(&key) {
         Some(code) => Some(format!("{}, {}", place.name, code)),
-        None => Some(place.name.clone())
+        None => Some(place.name.clone()),
     }
 }
 
 /// Given a 2-letter ISOCode, return the country.
 /// n.b. The code for the UK is "GB".
 pub fn get_country(iso_code: &str) -> Option<&Country> {
-    COUNTRIES.get()?.get(iso_code)
+    COUNTRIES.get(iso_code)
 }
 
 /// Given key, return the first-level country subdivision.
 /// e.g. for "GB.ENG" return "England".
 /// In the US this would be a state.
 pub fn get_admin1_code(key: &str) -> Option<&String> {
-    ADMIN_1_CODES.get()?.get(key)
+    ADMIN_1_CODES.get(key)
 }
 
 /// Given key, return the second-level country subdivision.
 /// e.g. for "GB.ENG.J9" return "Nottinghamshire".
 pub fn get_admin2_code(key: &str) -> Option<&String> {
-    ADMIN_2_CODES.get()?.get(key)
+    ADMIN_2_CODES.get(key)
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -175,23 +194,23 @@ pub struct Place {
     pub timezone: String,
 }
 
-pub(crate) type RTReePoint = [f64; 2];
+pub(crate) type RTreePoint = [f64; 2];
 
 impl Place {
-    fn as_rtree_point(&self) -> RTReePoint {
+    fn as_rtree_point(&self) -> RTreePoint {
         [self.lat, self.lon]
     }
 }
 
 impl RTreeObject for Place {
-    type Envelope = AABB<RTReePoint>;
+    type Envelope = AABB<RTreePoint>;
 
     fn envelope(&self) -> Self::Envelope {
         AABB::from_point(self.as_rtree_point())
     }
 }
 
-fn rtree_point_to_geo_point(point: &RTReePoint) -> geo::Point {
+fn rtree_point_to_geo_point(point: &RTreePoint) -> geo::Point {
     point! { x: point[1], y: point[0] }
 }
 
@@ -206,23 +225,15 @@ impl PointDistance for Place {
     }
 }
 
-fn load_countries(options: GeocodingOptions) -> JoinHandle<()> {
-    assert!(COUNTRIES.get().is_none());
-    // Spawn a thread to do the actual work of downloading and populating the
-    // countries table. We don't join the thread (ever) to avoid blocking the
-    // main thread here.
-    std::thread::spawn(|| {
-        COUNTRIES.set(load_countries_inner(options)).unwrap();
-    })
-}
+#[stime]
+fn load_countries() -> HashMap<String, Country> {
+    let options = OPTIONS.get().unwrap();
 
-#[time]
-fn load_countries_inner(options: GeocodingOptions) -> HashMap<String, Country> {
     if options.disable_geocoding() {
         return HashMap::new();
     }
 
-    let filename = download_file(&options, "countryInfo.txt");
+    let filename = download_file(options, "countryInfo.txt");
 
     let src_file = File::open(&filename).unwrap();
     let rdr = BufReader::new(src_file);
@@ -255,25 +266,15 @@ fn load_countries_inner(options: GeocodingOptions) -> HashMap<String, Country> {
     countries
 }
 
-fn load_admin_1_codes(options: GeocodingOptions) -> JoinHandle<()> {
-    assert!(ADMIN_1_CODES.get().is_none());
-    // Spawn a thread to do the actual work of downloading and populating the
-    // ADMIN_1_CODES table. We don't join the thread (ever) to avoid blocking
-    // the main thread here.
-    std::thread::spawn(|| {
-        ADMIN_1_CODES
-            .set(load_admin_1_codes_inner(options))
-            .unwrap();
-    })
-}
+#[stime]
+fn load_admin_1_codes() -> HashMap<String, String> {
+    let options = OPTIONS.get().unwrap();
 
-#[time]
-fn load_admin_1_codes_inner(options: GeocodingOptions) -> HashMap<String, String> {
     if options.disable_geocoding() {
         return HashMap::new();
     }
 
-    let filename = download_file(&options, "admin1CodesASCII.txt");
+    let filename = download_file(options, "admin1CodesASCII.txt");
     let src_file = File::open(&filename).unwrap();
     let rdr = BufReader::new(src_file);
     let mut codes = HashMap::new();
@@ -302,25 +303,15 @@ fn load_admin_1_codes_inner(options: GeocodingOptions) -> HashMap<String, String
     codes
 }
 
-fn load_admin_2_codes(options: GeocodingOptions) -> JoinHandle<()> {
-    assert!(ADMIN_2_CODES.get().is_none());
-    // Spawn a thread to do the actual work of downloading and populating the
-    // ADMIN_2_CODES table. We don't join the thread (ever) to avoid blocking
-    // the main thread here.
-    std::thread::spawn(|| {
-        ADMIN_2_CODES
-            .set(load_admin_2_codes_inner(options))
-            .unwrap();
-    })
-}
+#[stime]
+fn load_admin_2_codes() -> HashMap<String, String> {
+    let options = OPTIONS.get().unwrap();
 
-#[time]
-fn load_admin_2_codes_inner(options: GeocodingOptions) -> HashMap<String, String> {
     if options.disable_geocoding() {
         return HashMap::new();
     }
 
-    let filename = download_file(&options, "admin2Codes.txt");
+    let filename = download_file(options, "admin2Codes.txt");
     let src_file = File::open(&filename).unwrap();
     let rdr = BufReader::new(src_file);
     let mut codes = HashMap::new();
@@ -349,18 +340,10 @@ fn load_admin_2_codes_inner(options: GeocodingOptions) -> HashMap<String, String
     codes
 }
 
-fn load_places(options: GeocodingOptions) -> JoinHandle<()> {
-    assert!(PLACES.get().is_none());
-    // Spawn a thread to do the actual work of downloading and populating the
-    // ADMIN_2_CODES table. We don't join the thread (ever) to avoid blocking
-    // the main thread here.
-    std::thread::spawn(|| {
-        PLACES.set(load_places_inner(options)).unwrap();
-    })
-}
+#[stime]
+fn load_places() -> RTree<Place> {
+    let options = OPTIONS.get().unwrap();
 
-#[time]
-fn load_places_inner(options: GeocodingOptions) -> RTree<Place> {
     if options.disable_geocoding() {
         return RTree::new();
     }
@@ -368,7 +351,7 @@ fn load_places_inner(options: GeocodingOptions) -> RTree<Place> {
     let mut places = Vec::with_capacity(2048);
 
     for iso_code in &options.countries {
-        load_place(&mut places, &options, iso_code);
+        load_place(&mut places, options, iso_code);
     }
 
     let tree = RTree::bulk_load(places);
@@ -382,7 +365,7 @@ fn load_places_inner(options: GeocodingOptions) -> RTree<Place> {
     tree
 }
 
-#[time]
+#[stime]
 fn load_place(places: &mut Vec<Place>, options: &GeocodingOptions, iso_code: &str) {
     let src_filename = format!("{}.zip", iso_code);
     let filename = download_file(&options, &src_filename);
@@ -404,7 +387,9 @@ fn load_place(places: &mut Vec<Place>, options: &GeocodingOptions, iso_code: &st
         for line in rdr.lines() {
             let line = line.unwrap();
             let fields: Vec<_> = line.split('\t').collect();
-            let fc = fields[6]; // feature_class
+            let fc = fields[6];
+
+            // feature_class
             // A = country, state, region
             // H = stream, lake
             // L = parks, area
@@ -456,7 +441,6 @@ fn load_place(places: &mut Vec<Place>, options: &GeocodingOptions, iso_code: &st
 
         info!("Loaded {} places from {}", place_count, expected_filename);
         place_count = 0;
-
     }
 }
 
@@ -492,7 +476,7 @@ fn download_file(options: &GeocodingOptions, filename: &str) -> PathBuf {
     out_filename
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct GeocodingOptions {
     /// Folder in which to place the downloaded files.
     /// If this is None, no downloading (and hence no geocoding) is

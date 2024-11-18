@@ -4,7 +4,7 @@ use logging_timer::time;
 use time::{Duration, OffsetDateTime};
 
 use crate::{
-    error::GapixError, geocoding::RTReePoint, model::{
+    error::GapixError, geocoding::RTreePoint, model::{
         Bounds, Email, EnrichedGpx, EnrichedTrackPoint, Extensions, FixType, Gpx, Link, Metadata,
         Waypoint, XmlDeclaration,
     }, stage::{distance_between_points_metres, speed_kmh_from_duration}
@@ -459,7 +459,9 @@ impl EnrichedTrackPoint {
         point! { x: self.lon, y: self.lat }
     }
 
-    pub fn as_rtree_point(&self) -> RTReePoint {
+    /// Makes an RTreePoint, which is the point type used in the RTree
+    /// of places for reverse-geocoding.
+    pub fn as_rtree_point(&self) -> RTreePoint {
         [self.lat, self.lon]
     }
 
