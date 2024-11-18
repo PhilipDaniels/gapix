@@ -175,12 +175,24 @@ pub struct Place {
     pub timezone: String,
 }
 
+pub(crate) type RTReePoint = [f64; 2];
+
+impl Place {
+    fn as_rtree_point(&self) -> RTReePoint {
+        [self.lat, self.lon]
+    }
+}
+
 impl RTreeObject for Place {
-    type Envelope = AABB<[f64; 2]>;
+    type Envelope = AABB<RTReePoint>;
 
     fn envelope(&self) -> Self::Envelope {
-        AABB::from_point([self.lat, self.lon])
+        AABB::from_point(self.as_rtree_point())
     }
+}
+
+fn rtree_point_to_geo_point(point: &RTReePoint) -> geo::Point {
+    point! { x: point[1], y: point[0] }
 }
 
 impl PointDistance for Place {
@@ -188,13 +200,8 @@ impl PointDistance for Place {
         &self,
         point: &<Self::Envelope as rstar::Envelope>::Point,
     ) -> <<Self::Envelope as rstar::Envelope>::Point as rstar::Point>::Scalar {
-        // These must match what we set in `impl RTreeObject::envelope()`.
-        let lat = point[0];
-        let lon = point[1];
-        // Note that points are constructed this way round: see
-        // `EnrichedTrackPoint::as_geo_point()`.
-        let p1 = point! { x: lon, y: lat };
-        let p2 = point! { x: self.lon, y: self.lat };
+        let p1 = rtree_point_to_geo_point(point);
+        let p2 = rtree_point_to_geo_point(&self.as_rtree_point());
         p1.geodesic_distance(&p2)
     }
 }

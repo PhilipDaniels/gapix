@@ -4,12 +4,10 @@ use logging_timer::time;
 use time::{Duration, OffsetDateTime};
 
 use crate::{
-    error::GapixError,
-    model::{
+    error::GapixError, geocoding::RTReePoint, model::{
         Bounds, Email, EnrichedGpx, EnrichedTrackPoint, Extensions, FixType, Gpx, Link, Metadata,
         Waypoint, XmlDeclaration,
-    },
-    stage::{distance_between_points_metres, speed_kmh_from_duration},
+    }, stage::{distance_between_points_metres, speed_kmh_from_duration}
 };
 
 /// Checks to see whether a valid is in the valid range for a degrees value
@@ -459,6 +457,10 @@ impl EnrichedTrackPoint {
     /// distances are wrong - a lot wrong.
     pub fn as_geo_point(&self) -> Point {
         point! { x: self.lon, y: self.lat }
+    }
+
+    pub fn as_rtree_point(&self) -> RTReePoint {
+        [self.lat, self.lon]
     }
 
     /// Convenience function to extract the air_temp from
