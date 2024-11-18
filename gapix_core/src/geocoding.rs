@@ -14,35 +14,6 @@ use rstar::{PointDistance, RTree, RTreeObject, AABB};
 
 use crate::byte_counter::ByteCounter;
 
-#[derive(Debug, Clone)]
-pub struct GeocodingOptions {
-    /// Folder in which to place the downloaded files.
-    /// If this is None, no downloading (and hence no geocoding) is
-    /// done.
-    pub download_folder: Option<PathBuf>,
-    /// List of country isocodes to load.
-    pub countries: Vec<String>,
-    /// If true, forces a re-download of the data files even if they already
-    /// exist. This is a good way of keeping them up to date.
-    pub force_download: bool,
-}
-
-impl GeocodingOptions {
-    fn disable_geocoding(&self) -> bool {
-        self.download_folder.is_none() || self.countries.is_empty()
-    }
-
-    fn get_output_path<P: AsRef<Path>>(&self, filename: P) -> PathBuf {
-        let mut out = self.download_folder.clone().unwrap();
-        out.push(filename);
-        out
-    }
-
-    fn include_country(&self, isocode: &str) -> bool {
-        self.countries.iter().position(|c| c == isocode).is_some()
-    }
-}
-
 /// Initialises the geocoding system. This involves downloading, filtering and
 /// loading various files from geonames.org. This is done on background threads
 /// so that hopefully the structures will be available as soon as they are
@@ -66,9 +37,20 @@ pub fn initialise_geocoding(options: &GeocodingOptions) {
     h4.join().unwrap();
 }
 
+/// Map of countries indexed by 2-letter isocode.
 static COUNTRIES: OnceLock<HashMap<String, Country>> = OnceLock::new();
+
+/// Given key, return the first-level country subdivision.
+/// e.g. for "GB.ENG" return "England".
+/// In the US this would be a state.
 static ADMIN_1_CODES: OnceLock<HashMap<String, String>> = OnceLock::new();
+
+/// Given key, return the second-level country subdivision.
+/// e.g. for "GB.ENG.J9" return "Nottinghamshire".
 static ADMIN_2_CODES: OnceLock<HashMap<String, String>> = OnceLock::new();
+
+/// The lowest level of places - towns, mountains, parks etc.
+/// This is where reverse-geocoding begins.
 static PLACES: OnceLock<RTree<Place>> = OnceLock::new();
 
 /// Given a (lat, lon) finds the nearest place and returns a description of it.
@@ -82,9 +64,13 @@ pub fn reverse_geocode_latlon((lat, lon): (f64, f64)) -> Option<String> {
     }
 
     let place = place.unwrap();
-    // Now use the attributes of the Place to find the country name, county etc.
 
-    Some(place.name.clone())
+    // Now use the attributes of the Place to find the country name, county etc.
+    let key = format!("{}.{}.{}", place.iso_code, place.admin1, place.admin2);
+    match get_admin2_code(&key) {
+        Some(code) => Some(format!("{}, {}", place.name, code)),
+        None => Some(place.name.clone())
+    }
 }
 
 /// Given a 2-letter ISOCode, return the country.
@@ -497,4 +483,33 @@ fn download_file(options: &GeocodingOptions, filename: &str) -> PathBuf {
     }
 
     out_filename
+}
+
+#[derive(Debug, Clone)]
+pub struct GeocodingOptions {
+    /// Folder in which to place the downloaded files.
+    /// If this is None, no downloading (and hence no geocoding) is
+    /// done.
+    pub download_folder: Option<PathBuf>,
+    /// List of country isocodes to load.
+    pub countries: Vec<String>,
+    /// If true, forces a re-download of the data files even if they already
+    /// exist. This is a good way of keeping them up to date.
+    pub force_download: bool,
+}
+
+impl GeocodingOptions {
+    fn disable_geocoding(&self) -> bool {
+        self.download_folder.is_none() || self.countries.is_empty()
+    }
+
+    fn get_output_path<P: AsRef<Path>>(&self, filename: P) -> PathBuf {
+        let mut out = self.download_folder.clone().unwrap();
+        out.push(filename);
+        out
+    }
+
+    fn include_country(&self, isocode: &str) -> bool {
+        self.countries.iter().position(|c| c == isocode).is_some()
+    }
 }
