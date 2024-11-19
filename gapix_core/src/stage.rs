@@ -11,7 +11,7 @@ use log::{debug, info, warn};
 use logging_timer::time;
 use time::{Duration, OffsetDateTime};
 
-use crate::model::{EnrichedGpx, EnrichedTrackPoint};
+use crate::{geocoding::reverse_geocode_latlon, model::{EnrichedGpx, EnrichedTrackPoint}};
 
 /// Calculates speed in km/h from metres and seconds.
 pub fn speed_kmh(metres: f64, seconds: f64) -> f64 {
@@ -121,6 +121,30 @@ impl Stage {
         idxs.sort();
 
         idxs
+    }
+
+    /// Reverse geocodes the stage, i.e. looks up the place name from
+    /// the (lat,lon) coordinates and returns it. For a Control stage, this
+    /// is just "Name", for a Moving stage, returns "Name1 to Name2".
+    pub fn reverse_geocode(&self) -> Option<String> {
+        let start_desc = reverse_geocode_latlon(self.start.as_rtree_point());
+
+        let desc = match self.stage_type {
+            StageType::Moving => {
+                let end_desc = reverse_geocode_latlon(self.end.as_rtree_point());
+                match (start_desc, end_desc) {
+                    (Some(mut sd), Some(ed)) => {
+                        sd.push_str(" to ");
+                        sd.push_str(&ed);
+                        Some(sd)
+                    }
+                    _ => None,
+                }
+            }
+            StageType::Control => start_desc,
+        };
+
+        desc
     }
 
     /// Returns the duration of the stage.
@@ -971,31 +995,3 @@ fn classify_stage(start_point: &EnrichedTrackPoint, last_point: &EnrichedTrackPo
         StageType::Moving
     }
 }
-
-// /// Reverse geocode all the interesting points in the stage.
-// /// Reverse geocode means "given lat-lon, find the place".
-// fn reverse_geocode_stage(stage: &mut Stage) {
-//     //reverse_geocode_point(&mut stage.track_start_point);
-//     //reverse_geocode_point(&mut stage.start);
-//     //reverse_geocode_point(&mut stage.end);
-//     //stage.min_elevation.as_mut().map(|mut p| reverse_geocode_point(&mut p));
-//     //stage.max_elevation.as_mut().map(|mut p| reverse_geocode_point(&mut p));
-//     //stage.max_speed.as_mut().map(|mut p| reverse_geocode_point(&mut p));
-//     //stage.max_heart_rate.as_mut().map(|mut p| reverse_geocode_point(&mut p));
-//     //stage.min_air_temp.as_mut().map(|mut p| reverse_geocode_point(&mut p));
-//     //stage.max_air_temp.as_mut().map(|mut p| reverse_geocode_point(&mut p));
-// }
-
-// fn reverse_geocode_point(point: &mut EnrichedTrackPoint) {
-//     if point.location.is_none() {
-//         point.location = reverse_geocode_latlon(point.as_rtree_point());
-//     }
-// }
-
-// fn reverse_geocode_point_option(point: Option<&mut EnrichedTrackPoint>) {
-//     if let Some(point) = point {
-//         if point.location.is_none() {
-//             point.location = reverse_geocode_latlon(point.as_rtree_point());
-//         }
-//     }
-// }

@@ -18,7 +18,7 @@ use crate::{
     error::GapixError,
     formatting::to_local_date,
     model::{EnrichedGpx, EnrichedTrackPoint},
-    stage::{StageList, StageType},
+    stage::{Stage, StageList, StageType},
 };
 
 const DATE_COLUMN_WIDTH: f64 = 18.0;
@@ -205,14 +205,7 @@ fn output_stage_location(
     ws.set_column_width(fc.col + 3, LOCATION_DESCRIPTION_COLUMN_WIDTH)?;
 
     for stage in stages {
-        write_lat_lon_with_location(
-            ws,
-            fc,
-            (stage.start.lat, stage.start.lon),
-            Hyperlink::Yes,
-            None,
-        )?;
-
+        write_lat_lon_with_location_description(ws, fc, Hyperlink::Yes, stage)?;
         fc.increment_row();
     }
 
@@ -928,15 +921,16 @@ fn write_headers(
 /// Writes a lat-lon pair with the lat in the first cell as specified
 /// by 'rc' and the lon in the next column. If 'hyperlink' is yes then
 /// a hyperlink to Google Maps is written into the third column.
-fn write_lat_lon_with_location(
+fn write_lat_lon_with_location_description(
     ws: &mut Worksheet,
     fc: &FormatControl,
-    (lat, lon): (f64, f64),
     hyperlink: Hyperlink,
-    location: Option<&String>,
+    stage: &Stage,
 ) -> Result<(), GapixError> {
     let format = fc.lat_lon_format().set_font_color(Color::Black);
 
+    let lat = stage.start.lat;
+    let lon = stage.start.lon;
     ws.write_number_with_format(fc.row, fc.col, lat, &format)?;
     ws.write_number_with_format(fc.row, fc.col + 1, lon, &format)?;
 
@@ -953,9 +947,10 @@ fn write_lat_lon_with_location(
     };
 
     let fc = fc.col_offset(3);
-    if let Some(location) = location {
-        if !location.is_empty() {
-            ws.write_string_with_format(fc.row, fc.col, location, &fc.location_format())?;
+
+    if let Some(desc) = stage.reverse_geocode() {
+        if !desc.is_empty() {
+            ws.write_string_with_format(fc.row, fc.col, desc, &fc.location_format())?;
         } else {
             write_blank(ws, &fc)?;
         }
@@ -970,7 +965,7 @@ fn write_lat_lon_no_location(
     ws: &mut Worksheet,
     fc: &FormatControl,
     (lat, lon): (f64, f64),
-    hyperlink: Hyperlink
+    hyperlink: Hyperlink,
 ) -> Result<(), GapixError> {
     let format = fc.lat_lon_format().set_font_color(Color::Black);
 
