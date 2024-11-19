@@ -5,13 +5,13 @@ use std::{
     path::Path,
 };
 
+use chrono::{DateTime, Datelike, TimeDelta, TimeZone, Timelike, Utc};
 use log::info;
 use logging_timer::time;
 use rust_xlsxwriter::{
     Color, ExcelDateTime, Format, FormatAlign, FormatBorder, FormatPattern, Url, Workbook,
     Worksheet,
 };
-use time::{Duration, OffsetDateTime};
 
 use crate::{
     byte_counter::ByteCounter,
@@ -1089,9 +1089,8 @@ fn write_percentage_option(
 fn write_utc_date(
     ws: &mut Worksheet,
     fc: &FormatControl,
-    utc_date: OffsetDateTime,
+    utc_date: DateTime<Utc>,
 ) -> Result<(), GapixError> {
-    assert!(utc_date.offset().is_utc());
     let excel_date = date_to_excel_date(utc_date)?;
     ws.write_with_format(fc.row, fc.col, &excel_date, &fc.utc_date_format())?;
     Ok(())
@@ -1100,7 +1099,7 @@ fn write_utc_date(
 fn write_utc_date_option(
     ws: &mut Worksheet,
     fc: &FormatControl,
-    utc_date: Option<OffsetDateTime>,
+    utc_date: Option<DateTime<Utc>>,
 ) -> Result<(), GapixError> {
     if let Some(d) = utc_date {
         write_utc_date(ws, fc, d)?;
@@ -1115,10 +1114,10 @@ fn write_utc_date_option(
 fn write_utc_date_as_local(
     ws: &mut Worksheet,
     fc: &FormatControl,
-    utc_date: OffsetDateTime,
+    utc_date: DateTime<Utc>,
 ) -> Result<(), GapixError> {
-    assert!(utc_date.offset().is_utc());
-    let excel_date = date_to_excel_date(to_local_date(utc_date)?)?;
+    let local_date = to_local_date(utc_date)?;
+    let excel_date = date_to_excel_date(local_date)?;
     ws.write_with_format(fc.row, fc.col, &excel_date, &fc.local_date_format())?;
     Ok(())
 }
@@ -1126,7 +1125,7 @@ fn write_utc_date_as_local(
 fn write_utc_date_as_local_option(
     ws: &mut Worksheet,
     fc: &FormatControl,
-    utc_date: Option<OffsetDateTime>,
+    utc_date: Option<DateTime<Utc>>,
 ) -> Result<(), GapixError> {
     if let Some(d) = utc_date {
         write_utc_date_as_local(ws, fc, d)?;
@@ -1136,9 +1135,10 @@ fn write_utc_date_as_local_option(
     Ok(())
 }
 
-fn date_to_excel_date(date: OffsetDateTime) -> Result<ExcelDateTime, GapixError> {
+fn date_to_excel_date<G: TimeZone>(date: DateTime<G>) -> Result<ExcelDateTime, GapixError> {
+    // TODO: Check 0/1 basis.
     let excel_date =
-        ExcelDateTime::from_ymd(date.year().try_into()?, date.month().into(), date.day())?;
+        ExcelDateTime::from_ymd(date.year().try_into()?, date.month().try_into()?, date.day().try_into()?)?;
 
     // Clamp these values to the values Excel will take.
     // Issue a warning if out of bounds.
@@ -1160,13 +1160,13 @@ fn date_to_excel_date(date: OffsetDateTime) -> Result<ExcelDateTime, GapixError>
         second = 59;
     }
 
-    Ok(excel_date.and_hms(hour, minute, second)?)
+    Ok(excel_date.and_hms(hour, minute.try_into()?, second)?)
 }
 
 fn write_duration(
     ws: &mut Worksheet,
     fc: &FormatControl,
-    duration: Duration,
+    duration: TimeDelta,
 ) -> Result<(), GapixError> {
     let excel_duration = duration_to_excel_date(duration)?;
     ws.write_with_format(fc.row, fc.col, excel_duration, &fc.duration_format())?;
@@ -1176,7 +1176,7 @@ fn write_duration(
 fn write_duration_option(
     ws: &mut Worksheet,
     fc: &FormatControl,
-    duration: Option<Duration>,
+    duration: Option<TimeDelta>,
 ) -> Result<(), GapixError> {
     if let Some(dur) = duration {
         write_duration(ws, fc, dur)?;
@@ -1187,16 +1187,16 @@ fn write_duration_option(
     Ok(())
 }
 
-fn duration_to_excel_date(duration: Duration) -> Result<ExcelDateTime, GapixError> {
-    const SECONDS_PER_MINUTE: u32 = 60;
-    const SECONDS_PER_HOUR: u32 = SECONDS_PER_MINUTE * 60;
+fn duration_to_excel_date(duration: TimeDelta) -> Result<ExcelDateTime, GapixError> {
+    const SECONDS_PER_MINUTE: i64 = 60;
+    const SECONDS_PER_HOUR: i64 = SECONDS_PER_MINUTE * 60;
 
-    let mut all_secs: u32 = duration.as_seconds_f64() as u32;
+    let mut all_secs = duration.num_seconds();
     let hours: u16 = (all_secs / SECONDS_PER_HOUR).try_into()?;
-    all_secs -= hours as u32 * SECONDS_PER_HOUR;
+    all_secs -= hours as i64 * SECONDS_PER_HOUR;
 
     let minutes: u8 = (all_secs / SECONDS_PER_MINUTE).try_into()?;
-    all_secs -= minutes as u32 * SECONDS_PER_MINUTE;
+    all_secs -= minutes as i64 * SECONDS_PER_MINUTE;
 
     let seconds: u16 = all_secs.try_into()?;
 

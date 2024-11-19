@@ -3,12 +3,12 @@
 use core::str;
 use std::{borrow::Cow, path::Path, str::FromStr};
 
+use chrono::{DateTime, Utc};
 use declaration::parse_declaration;
 use gpx::parse_gpx;
 use log::info;
 use logging_timer::time;
 use quick_xml::{events::Event, Reader};
-use time::{format_description::well_known, OffsetDateTime};
 
 use crate::{
     error::GapixError,
@@ -122,7 +122,7 @@ impl<R> XmlReaderConversions for Reader<R> {
 /// inner text and convert it to a specific type.
 pub(crate) trait XmlReaderExtensions {
     fn read_inner_as_string(&mut self) -> Result<String, GapixError>;
-    fn read_inner_as_time(&mut self) -> Result<OffsetDateTime, GapixError>;
+    fn read_inner_as_time(&mut self) -> Result<DateTime<Utc>, GapixError>;
     fn read_inner_as<T: FromStr>(&mut self) -> Result<T, GapixError>;
 }
 
@@ -139,13 +139,15 @@ impl XmlReaderExtensions for Reader<&[u8]> {
     }
 
     #[inline]
-    fn read_inner_as_time(&mut self) -> Result<OffsetDateTime, GapixError> {
+    fn read_inner_as_time(&mut self) -> Result<DateTime<Utc>, GapixError> {
         let t = self.read_inner_as_string()?;
         // Do not allow errors from the time library to surface in our API, as
         // we may eventually allow a choice of time libraries between time and
         // chrono.
-        OffsetDateTime::parse(&t, &well_known::Rfc3339)
-            .map_err(|e| GapixError::DateParseFailure(e.to_string()))
+        match DateTime::parse_from_rfc3339(&t) {
+            Ok(dt) => Ok(dt.to_utc()),
+            Err(e) => Err(GapixError::DateParseFailure(e.to_string()))
+        }
     }
 
     #[inline]

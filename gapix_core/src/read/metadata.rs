@@ -91,8 +91,8 @@ pub(crate) fn parse_metadata(
 mod tests {
     use super::*;
     use crate::read::start_parse;
+    use chrono::DateTime;
     use quick_xml::Reader;
-    use time::{format_description::well_known, OffsetDateTime};
 
     #[test]
     fn valid_metadata_all_fields() {
@@ -143,7 +143,7 @@ mod tests {
         assert_eq!(result.links[1].href, "http://example2.com");
         assert_eq!(
             result.time,
-            Some(OffsetDateTime::parse("2024-02-02T10:10:54.000Z", &well_known::Rfc3339).unwrap())
+            Some(DateTime::parse_from_rfc3339("2024-02-02T10:10:54.000Z").unwrap().to_utc())
         );
         assert_eq!(result.keywords, Some("keyword1, keyword2".to_string()));
         let bounds = result.bounds.unwrap();
@@ -204,7 +204,7 @@ mod tests {
         assert_eq!(result.links[1].href, "http://example2.com");
         assert_eq!(
             result.time,
-            Some(OffsetDateTime::parse("2024-02-02T10:10:54.000Z", &well_known::Rfc3339).unwrap())
+            Some(DateTime::parse_from_rfc3339("2024-02-02T10:10:54.000Z").unwrap().to_utc())
         );
         assert_eq!(result.keywords, Some("keyword1, keyword2".to_string()));
         let bounds = result.bounds.unwrap();

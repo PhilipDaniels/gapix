@@ -1,5 +1,6 @@
 use std::{collections::HashMap, path::PathBuf};
-use time::{Duration, OffsetDateTime};
+
+use chrono::{DateTime, TimeDelta, Utc};
 
 // Comparison of the GPX crate. In addition to this, it is 8 times
 // slower when parsing a GPX.
@@ -69,7 +70,7 @@ pub struct Metadata {
     /// Zero or more URLs associated with the file.
     pub links: Vec<Link>,
     /// The creation date of the file.
-    pub time: Option<OffsetDateTime>,
+    pub time: Option<DateTime<Utc>>,
     /// Keywords associated with the file.
     pub keywords: Option<String>,
     /// Minimum and maximum coordinates which describe the extent of the
@@ -222,7 +223,7 @@ pub struct Waypoint {
     /// Univeral Coordinated Time (UTC), not local time! Conforms to ISO 8601
     /// specification for date/time representation. Fractional seconds are
     /// allowed for millisecond timing in tracklogs.
-    pub time: Option<OffsetDateTime>,
+    pub time: Option<DateTime<Utc>>,
     /// Magnetic variation (in degrees) at the point
     pub magvar: Option<f64>,
     /// Height (in meters) of geoid (mean sea level) above WGS84 earth
@@ -334,7 +335,7 @@ pub struct EnrichedTrackPoint {
     /// The elevation, as read from the <ele> tag.
     pub ele: Option<f64>,
     /// The time as read from the <time> tag.
-    pub time: Option<OffsetDateTime>,
+    pub time: Option<DateTime<Utc>>,
     /// The entire "extensions" element.
     pub extensions: Option<Extensions>,
     /// The Garmin TrackPoint extensions.
@@ -342,7 +343,7 @@ pub struct EnrichedTrackPoint {
 
     // All the below fields are the 'enriched' ones.
     /// The amount of time between this trackpoint and the previous one.
-    pub delta_time: Option<Duration>,
+    pub delta_time: Option<TimeDelta>,
     /// The distance between this trackpoint and the previous one.
     pub delta_metres: f64,
     /// The distance to this trackpoint from the beginning of the track.
@@ -350,7 +351,7 @@ pub struct EnrichedTrackPoint {
     /// The instantaneous speed at this point.
     pub speed_kmh: Option<f64>,
     /// The elapsed time between the beginning of the track and this point.
-    pub running_delta_time: Option<Duration>,
+    pub running_delta_time: Option<TimeDelta>,
     /// The change in elevation between this trackpoint and the previous one.
     pub ele_delta_metres: Option<f64>,
     /// The running ascent between the beginning of the track and this point.

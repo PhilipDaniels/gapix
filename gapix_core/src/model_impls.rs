@@ -1,7 +1,7 @@
+use chrono::{DateTime, TimeDelta, Utc};
 use geo::{point, Point};
 use log::debug;
 use logging_timer::time;
-use time::{Duration, OffsetDateTime};
 
 use crate::{
     error::GapixError, geocoding::RTreePoint, model::{
@@ -326,8 +326,8 @@ impl EnrichedGpx {
         // being set (mainly 'running' data). The calculations will return None when
         // we don't know the data.
         if self.points[0].time.is_some() {
-            self.points[0].delta_time = Some(Duration::ZERO);
-            self.points[0].running_delta_time = Some(Duration::ZERO);
+            self.points[0].delta_time = Some(TimeDelta::zero());
+            self.points[0].running_delta_time = Some(TimeDelta::zero());
             self.points[0].speed_kmh = Some(0.0);
         }
         if self.points[0].ele.is_some() {
@@ -353,7 +353,7 @@ impl EnrichedGpx {
             self.points[idx].delta_time = match (self.points[idx].time, self.points[idx - 1].time) {
                 (Some(t1), Some(t2)) => {
                     let dt = t1 - t2;
-                    assert!(dt.is_positive());
+                    assert!(dt.num_milliseconds() > 0);
                     Some(dt)
                 }
                 _ => None,
@@ -373,7 +373,7 @@ impl EnrichedGpx {
             self.points[idx].running_delta_time = match (self.points[idx].time, start_time) {
                 (Some(t1), Some(t2)) => {
                     let dt = t1 - t2;
-                    assert!(dt.is_positive());
+                    assert!(dt.num_milliseconds() > 0);
                     Some(dt)
                 }
                 _ => None,
@@ -440,7 +440,7 @@ impl EnrichedTrackPoint {
     ///
     /// It is important to use start_time() when calculating things like
     /// durations of stages.
-    pub fn start_time(&self) -> Option<OffsetDateTime> {
+    pub fn start_time(&self) -> Option<DateTime<Utc>> {
         if self.index == 0 {
             return self.time;
         }

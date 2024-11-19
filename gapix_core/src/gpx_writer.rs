@@ -160,7 +160,7 @@ fn write_metadata<W: Write>(
         write_link(w, link)?;
     }
     if let Some(time) = &metadata.time {
-        writeln!(w, "<time>{}</time>", format_utc_date(time)?)?;
+        writeln!(w, "<time>{}</time>", format_utc_date(time))?;
     }
     if let Some(keywords) = &metadata.keywords {
         writeln!(w, "<keywords>{}</keywords>", keywords)?;
@@ -345,7 +345,7 @@ fn write_waypoint<W: Write>(
                 writeln!(w, "<ele>{:.1}</ele>", ele)?;
             }
             if let Some(t) = point.time {
-                writeln!(w, "<time>{}</time>", format_utc_date(&t)?)?;
+                writeln!(w, "<time>{}</time>", format_utc_date(&t))?;
             }
             w.outdent();
             writeln!(w, "</{element_name}>")?;
@@ -364,7 +364,7 @@ fn write_waypoint<W: Write>(
         writeln!(w, "<ele>{}</ele>", ele)?;
     }
     if let Some(t) = point.time {
-        writeln!(w, "<time>{}</time>", format_utc_date(&t)?)?;
+        writeln!(w, "<time>{}</time>", format_utc_date(&t))?;
     }
     if let Some(magvar) = point.magvar {
         writeln!(w, "<magvar>{}</magvar>", magvar)?;
@@ -433,10 +433,11 @@ fn write_extensions<W: Write>(
 
 #[cfg(test)]
 mod tests {
+    use chrono::DateTime;
+
     use super::*;
     use crate::{model::*, read::read_gpx_from_slice};
     use std::{collections::HashMap, iter::zip};
-    use time::{format_description::well_known, OffsetDateTime};
 
     /// We construct 'gpx1', then write it to a buffer. We then
     /// deserialize the buffer into 'gpx2'. The two models should be identical
@@ -579,7 +580,9 @@ mod tests {
                 make_link("Metadata Link 2", "mp3", "http://mp3.com"),
             ],
             time: Some(
-                OffsetDateTime::parse("2024-02-02T10:10:54.000Z", &well_known::Rfc3339).unwrap(),
+                DateTime::parse_from_rfc3339("2024-02-02T10:10:54.000Z")
+                    .unwrap()
+                    .to_utc(),
             ),
             keywords: Some("keyword1, keyword2".to_string()),
             bounds: Some(bounds),
@@ -689,8 +692,11 @@ mod tests {
         let mut wp = Waypoint::with_lat_lon(lat, lon).unwrap();
 
         wp.ele = Some(12.3);
-        wp.time =
-            Some(OffsetDateTime::parse("2024-02-02T10:10:54.000Z", &well_known::Rfc3339).unwrap());
+        wp.time = Some(
+            DateTime::parse_from_rfc3339("2024-02-02T10:10:54.000Z")
+                .unwrap()
+                .to_utc(),
+        );
         wp.magvar = Some(98.121242354365);
         wp.geoid_height = Some(123.8487);
         wp.name = Some(name.into());

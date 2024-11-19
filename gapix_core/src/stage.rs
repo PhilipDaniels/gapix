@@ -6,21 +6,25 @@
 use core::{fmt, slice};
 use std::{collections::HashSet, ops::Index};
 
+use chrono::{DateTime, TimeDelta, Utc};
 use geo::{GeodesicDistance, Point};
 use log::{debug, info, warn};
 use logging_timer::time;
-use time::{Duration, OffsetDateTime};
 
-use crate::{geocoding::reverse_geocode_latlon, model::{EnrichedGpx, EnrichedTrackPoint}};
+use crate::{
+    geocoding::reverse_geocode_latlon,
+    model::{EnrichedGpx, EnrichedTrackPoint},
+};
 
 /// Calculates speed in km/h from metres and seconds.
 pub fn speed_kmh(metres: f64, seconds: f64) -> f64 {
     (metres / seconds) * 3.6
 }
 
-/// Calculates speed in km/h from metres and a Duration.
-pub fn speed_kmh_from_duration(metres: f64, time: Duration) -> f64 {
-    speed_kmh(metres, time.as_seconds_f64())
+/// Calculates speed in km/h from metres and a duration.
+pub fn speed_kmh_from_duration(metres: f64, duration: TimeDelta) -> f64 {
+    let millis = duration.num_milliseconds() as f64;
+    speed_kmh(metres, millis / 1000.0)
 }
 
 /// These are the parameters that control the 'Stage-finding'
@@ -148,7 +152,7 @@ impl Stage {
     }
 
     /// Returns the duration of the stage.
-    pub fn duration(&self) -> Option<Duration> {
+    pub fn duration(&self) -> Option<TimeDelta> {
         // Be careful to use the time that the 'start' TrackPoint
         // began, not when it was recorded. They are very different
         // for TrackPoints written when you are stopped. A TrackPoint
@@ -161,7 +165,7 @@ impl Stage {
 
     /// Returns the running duration to the end of the stage from
     /// the 'track_start_point' (the first point in the track).
-    pub fn running_duration(&self) -> Option<Duration> {
+    pub fn running_duration(&self) -> Option<TimeDelta> {
         match (self.end.time, self.track_start_point.start_time()) {
             (Some(et), Some(st)) => Some(et - st),
             _ => None,
@@ -309,18 +313,18 @@ impl StageList {
     }
 
     /// Returns the start time of the first Stage.
-    pub fn start_time(&self) -> Option<OffsetDateTime> {
+    pub fn start_time(&self) -> Option<DateTime<Utc>> {
         self.first_point().start_time()
     }
 
     /// Returns the end time of the last Stage.
-    pub fn end_time(&self) -> Option<OffsetDateTime> {
+    pub fn end_time(&self) -> Option<DateTime<Utc>> {
         self.last_point().time
     }
 
     /// Returns the total duration between the start of the first
     /// stage and the end of the last stage.
-    pub fn duration(&self) -> Option<Duration> {
+    pub fn duration(&self) -> Option<TimeDelta> {
         match (self.end_time(), self.start_time()) {
             (Some(et), Some(st)) => Some(et - st),
             _ => None,
@@ -328,7 +332,7 @@ impl StageList {
     }
 
     /// Returns the total time Moving across all the stages.
-    pub fn total_moving_time(&self) -> Option<Duration> {
+    pub fn total_moving_time(&self) -> Option<TimeDelta> {
         match (self.duration(), self.total_control_time()) {
             (Some(dur), Some(tst)) => Some(dur - tst),
             _ => None,
@@ -336,7 +340,7 @@ impl StageList {
     }
 
     /// Returns the total time Control across all the stages.
-    pub fn total_control_time(&self) -> Option<Duration> {
+    pub fn total_control_time(&self) -> Option<TimeDelta> {
         self.0
             .iter()
             .filter_map(|stage| match stage.stage_type {
@@ -480,7 +484,11 @@ impl StageList {
     /// across all the stages.
     pub fn moving_percent(&self) -> Option<f64> {
         match (self.total_moving_time(), self.duration()) {
-            (Some(tmt), Some(dur)) => Some(tmt.as_seconds_f64() / dur.as_seconds_f64()),
+            (Some(tmt), Some(dur)) => {
+                let tmt = tmt.num_milliseconds() as f64;
+                let dur = dur.num_milliseconds() as f64;
+                Some(tmt / dur)
+            }
             _ => None,
         }
     }
@@ -752,7 +760,8 @@ fn find_stop_index(
                 .time
                 .expect("time exists due to check in detect_stages");
 
-        if stop_duration.as_seconds_f64() >= params.min_duration_seconds {
+        let secs = stop_duration.num_milliseconds() as f64 / 1000.0;
+        if secs >= params.min_duration_seconds {
             debug!(
                 "find_stop_index(start_idx={start_idx}) Found valid stop at index {}, duration = {}",
                 possible_end_point.index,
@@ -964,7 +973,8 @@ fn get_starting_stage_type(gpx: &EnrichedGpx, _params: &StageDetectionParameters
                 .start_time()
                 .expect("time exists due to check in detect_stages");
 
-        if duration.as_seconds_f64() >= 180.0 {
+        let secs = duration.num_milliseconds() as f64 / 1000.0;
+        if secs >= 180.0 {
             return classify_stage(start, &gpx.points[end_idx]);
         } else {
             end_idx += 1;

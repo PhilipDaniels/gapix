@@ -82,8 +82,6 @@ Or build from source using cargo.
 * Has only been tested on my own GPX files from a Garmin Edge 1040.
 
 # TODO
-- Change to use Chrono and Chrono-TZ? Probably. First need to be
-  able to reverse geocode lat-lon to timezone name.
 - Move model into its own crate.
 - Track splitting. Put file-level waypoints on the nearest split track.
 - Waypoint processing for warnings etc.
@@ -108,7 +106,6 @@ Or build from source using cargo.
 
 # Geocoding
 - String intern the timezone on PLACES
-- In get_next_stage, geocode the points before cloning. The descriptions
-  should then show up on the trackpoints tab.
 - Get the timezone name for the spreadsheet. Bounding box optimisation?
-- Can we avoid the TIME crate blow up now if we know the timezone name?
+- In Excel.rs, need to check the date_to_excel_date and duration_to_excel_date fns.
+
