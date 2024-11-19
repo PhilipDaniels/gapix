@@ -6,6 +6,7 @@ use std::{
     sync::{LazyLock, OnceLock},
 };
 
+use chrono_tz::Tz;
 use geo::{point, GeodesicDistance};
 use log::{debug, info, warn};
 use logging_timer::{stime, time};
@@ -109,6 +110,19 @@ pub fn get_admin1_code(key: &str) -> Option<&String> {
 /// e.g. for "GB.ENG.J9" return "Nottinghamshire".
 pub fn get_admin2_code(key: &str) -> Option<&String> {
     ADMIN_2_CODES.get(key)
+}
+
+/// Given a point, finds the nearest place in the database.
+pub fn get_nearest_place(point: RTreePoint) -> Option<&'static Place> {
+    PLACES2.nearest_neighbor(&point)
+}
+
+/// Given a point, first looks up the place and uses that to determine the
+/// timezone.
+pub fn get_timezone(point: RTreePoint) -> Option<Tz> {
+    PLACES2
+        .nearest_neighbor(&point)
+        .and_then(|place| place.timezone.parse().ok())
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
