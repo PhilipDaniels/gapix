@@ -4,7 +4,7 @@ use clap::builder::styling::AnsiColor;
 use directories::ProjectDirs;
 use env_logger::Builder;
 use gapix_core::{
-    excel::{create_summary_xlsx, write_summary_to_file, Hyperlink}, geocoding::{initialise_geocoding, reverse_geocode_latlon, GeocodingOptions}, gpx_writer::{write_gpx_to_file, OutputOptions}, model::Gpx, read::read_gpx_from_file, simplification::{metres_to_epsilon, reduce_trackpoints_by_rdp}, stage::{detect_stages, StageDetectionParameters}
+    excel::{create_summary_xlsx, write_summary_to_file, Hyperlink}, geocoding::{initialise_geocoding, GeocodingOptions}, gpx_writer::{write_gpx_to_file, OutputOptions}, model::Gpx, read::read_gpx_from_file, simplification::{metres_to_epsilon, reduce_trackpoints_by_rdp}, stage::{detect_stages, StageDetectionParameters}
 };
 use join::join_input_files;
 use log::{debug, info, logger, warn};
@@ -54,9 +54,6 @@ fn main2() -> Result<()> {
     
     let geo_opt = get_geocoding_options(&args);
     initialise_geocoding(&geo_opt);
-
-    // TEMP: Force it to run to completion.
-    let _ = reverse_geocode_latlon([53.1, 1.2]);
 
     // In join mode we join all the input files into a single file
     // and then process it. There is nothing to be done after that.
