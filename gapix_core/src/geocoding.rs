@@ -11,6 +11,7 @@ use geo::{point, GeodesicDistance};
 use log::{debug, info, warn};
 use logging_timer::{stime, time};
 use rstar::{PointDistance, RTree, RTreeObject, AABB};
+use tzf_rs::DefaultFinder;
 
 use crate::byte_counter::ByteCounter;
 
@@ -31,6 +32,8 @@ static ADMIN_2_CODES: LazyLock<HashMap<String, String>> = LazyLock::new(|| load_
 /// The lowest level of places - towns, mountains, parks etc.
 /// This is where reverse-geocoding begins.
 static PLACES2: LazyLock<RTree<Place>> = LazyLock::new(|| load_places());
+
+static TIMEZONES: LazyLock<tzf_rs::DefaultFinder> = LazyLock::new(|| DefaultFinder::new());
 
 /// Initialises the geocoding system. This involves downloading, filtering and
 /// loading various files from geonames.org. This is done on background threads
@@ -117,12 +120,13 @@ pub fn get_nearest_place(point: RTreePoint) -> Option<&'static Place> {
     PLACES2.nearest_neighbor(&point)
 }
 
-/// Given a point, first looks up the place and uses that to determine the
-/// timezone.
+/// Given a point, finds the timezone.
 pub fn get_timezone(point: RTreePoint) -> Option<Tz> {
-    PLACES2
-        .nearest_neighbor(&point)
-        .and_then(|place| place.timezone.parse().ok())
+    let tzname = TIMEZONES.get_tz_name(point[1], point[0]);
+    // I suppose parse() might fail, we are passing timezone names from tzf-rs
+    // into chrono-tz. They SHOULD be the same though.
+    let tz: Tz = tzname.parse().ok()?;
+    Some(tz)
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

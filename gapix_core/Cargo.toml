@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+chrono = "0.4.38"
+chrono-tz = "0.10"
 env_logger = { workspace = true }
 geo = "0.28.0"
 indent_write = { git = "https://github.com/PhilipDaniels/indent-write.git", branch = "indent-outdent" }
@@ -14,6 +16,5 @@ reqwest = { version = "0.12", features = ["blocking"] }
 rstar = "0.12.2"
 rust_xlsxwriter = "0.75"
 thiserror = { workspace = true }
-chrono = "0.4.38"
-chrono-tz = "0.10"
+tzf-rs = "0.4.9"
 zip = "2.2.0"
