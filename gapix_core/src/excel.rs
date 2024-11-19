@@ -14,7 +14,12 @@ use rust_xlsxwriter::{
 };
 
 use crate::{
-    byte_counter::ByteCounter, error::GapixError, formatting::to_local_date3, geocoding::RTreePoint, model::{EnrichedGpx, EnrichedTrackPoint}, stage::{Stage, StageList, StageType}
+    byte_counter::ByteCounter,
+    dates::utc_to_appropriate_timezone,
+    error::GapixError,
+    geocoding::RTreePoint,
+    model::{EnrichedGpx, EnrichedTrackPoint},
+    stage::{Stage, StageList, StageType},
 };
 
 const DATE_COLUMN_WIDTH: f64 = 18.0;
@@ -225,7 +230,12 @@ fn output_start_time(
         match stage.start.time {
             Some(start_time) => {
                 write_utc_date(ws, fc, start_time)?;
-                write_utc_date_as_local(ws, &fc.col_offset(1), start_time, stage.start.as_rtree_point())?;
+                write_utc_date_as_local(
+                    ws,
+                    &fc.col_offset(1),
+                    start_time,
+                    stage.start.as_rtree_point(),
+                )?;
             }
             None => {
                 write_blank(ws, fc)?;
@@ -238,7 +248,12 @@ fn output_start_time(
 
     fc.start_summary_row();
     write_utc_date_option(ws, fc, stages.start_time())?;
-    write_utc_date_as_local_option(ws, &fc.col_offset(1), stages.start_time(), stages.first_point().as_rtree_point())?;
+    write_utc_date_as_local_option(
+        ws,
+        &fc.col_offset(1),
+        stages.start_time(),
+        stages.first_point().as_rtree_point(),
+    )?;
 
     fc.next_colour_block(2);
     Ok(())
@@ -257,7 +272,12 @@ fn output_end_time(
         match stage.end.time {
             Some(end_time) => {
                 write_utc_date(ws, fc, end_time)?;
-                write_utc_date_as_local(ws, &fc.col_offset(1), end_time, stage.end.as_rtree_point())?;
+                write_utc_date_as_local(
+                    ws,
+                    &fc.col_offset(1),
+                    end_time,
+                    stage.end.as_rtree_point(),
+                )?;
             }
             None => {
                 write_blank(ws, fc)?;
@@ -270,7 +290,12 @@ fn output_end_time(
 
     fc.start_summary_row();
     write_utc_date_option(ws, fc, stages.end_time())?;
-    write_utc_date_as_local_option(ws, &fc.col_offset(1), stages.end_time(), stages.last_point().as_rtree_point())?;
+    write_utc_date_as_local_option(
+        ws,
+        &fc.col_offset(1),
+        stages.end_time(),
+        stages.last_point().as_rtree_point(),
+    )?;
 
     fc.next_colour_block(2);
     Ok(())
@@ -701,7 +726,6 @@ fn output_tp_time(
         match p.time {
             Some(time) => {
                 write_utc_date(ws, fc, time)?;
-                // TODO: It's far too slow to lookup all the many thousands of points.
                 write_utc_date_as_local(ws, &fc.col_offset(1), time, p.as_rtree_point())?;
             }
             None => {
@@ -1112,9 +1136,9 @@ fn write_utc_date_as_local(
     ws: &mut Worksheet,
     fc: &FormatControl,
     utc_date: DateTime<Utc>,
-    point: RTreePoint
+    point: RTreePoint,
 ) -> Result<(), GapixError> {
-    let local_date = to_local_date3(utc_date, point)?;
+    let local_date = utc_to_appropriate_timezone(utc_date, point)?;
     let excel_date = date_to_excel_date(local_date)?;
     ws.write_with_format(fc.row, fc.col, &excel_date, &fc.local_date_format())?;
     Ok(())
@@ -1124,7 +1148,7 @@ fn write_utc_date_as_local_option(
     ws: &mut Worksheet,
     fc: &FormatControl,
     utc_date: Option<DateTime<Utc>>,
-    point: RTreePoint
+    point: RTreePoint,
 ) -> Result<(), GapixError> {
     if let Some(d) = utc_date {
         write_utc_date_as_local(ws, fc, d, point)?;
@@ -1136,8 +1160,11 @@ fn write_utc_date_as_local_option(
 
 fn date_to_excel_date<G: TimeZone>(date: DateTime<G>) -> Result<ExcelDateTime, GapixError> {
     // TODO: Check 0/1 basis.
-    let excel_date =
-        ExcelDateTime::from_ymd(date.year().try_into()?, date.month().try_into()?, date.day().try_into()?)?;
+    let excel_date = ExcelDateTime::from_ymd(
+        date.year().try_into()?,
+        date.month().try_into()?,
+        date.day().try_into()?,
+    )?;
 
     // Clamp these values to the values Excel will take.
     // Issue a warning if out of bounds.

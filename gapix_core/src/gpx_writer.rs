@@ -10,8 +10,8 @@ use logging_timer::time;
 
 use crate::{
     byte_counter::ByteCounter,
+    dates::format_utc_date,
     error::GapixError,
-    formatting::format_utc_date,
     model::{
         Copyright, Email, Extensions, Gpx, Link, Metadata, Person, Route, Track, TrackSegment,
         Waypoint, XmlDeclaration,

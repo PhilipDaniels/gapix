@@ -1,7 +1,7 @@
 mod byte_counter;
 mod error;
 pub mod excel;
-pub mod formatting;
+pub mod dates;
 pub mod geocoding;
 pub mod gpx_writer;
 pub mod model;

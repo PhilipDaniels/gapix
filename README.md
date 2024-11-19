@@ -103,9 +103,3 @@ Or build from source using cargo.
 # Links
 - GPX XSD: https://www.topografix.com/GPX/1/1/gpx.xsd
 - Trackpoint extensions XSD: https://www8.garmin.com/xmlschemas/TrackPointExtensionv1.xsd
-
-# Geocoding
-- String intern the timezone on PLACES
-- Get the timezone name for the spreadsheet. Bounding box optimisation?
-- In Excel.rs, need to check the date_to_excel_date and duration_to_excel_date fns.
-
