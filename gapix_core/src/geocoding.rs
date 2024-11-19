@@ -208,8 +208,7 @@ pub struct Place {
     pub lon: f64,
     pub iso_code: String,
     pub admin1: String,
-    pub admin2: String,
-    pub timezone: String,
+    pub admin2: String
 }
 
 pub(crate) type RTreePoint = [f64; 2];
@@ -439,7 +438,6 @@ fn load_place(places: &mut Vec<Place>, options: &GeocodingOptions, iso_code: &st
                         iso_code,
                         admin1: fields[10].to_string(),
                         admin2: fields[11].to_string(),
-                        timezone: fields[17].to_string(),
                     };
 
                     places.push(place);
