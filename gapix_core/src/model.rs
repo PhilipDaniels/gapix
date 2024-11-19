@@ -357,6 +357,4 @@ pub struct EnrichedTrackPoint {
     pub running_ascent_metres: Option<f64>,
     /// The running descent between the beginning of the track and this point.
     pub running_descent_metres: Option<f64>,
-    /// The location (reverse geo-coded based on lat-lon)
-    pub location: Option<String>,
 }

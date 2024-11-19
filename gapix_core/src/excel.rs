@@ -205,12 +205,12 @@ fn output_stage_location(
     ws.set_column_width(fc.col + 3, LOCATION_DESCRIPTION_COLUMN_WIDTH)?;
 
     for stage in stages {
-        write_lat_lon(
+        write_lat_lon_with_location(
             ws,
             fc,
             (stage.start.lat, stage.start.lon),
             Hyperlink::Yes,
-            stage.start.location.as_ref(),
+            None,
         )?;
 
         fc.increment_row();
@@ -736,11 +736,10 @@ fn output_tp_location(
     hyperlink: Hyperlink,
     mandatory_hyperlinks: &HashSet<usize>,
 ) -> Result<(), GapixError> {
-    write_headers(ws, fc, "Location", &["Lat", "Lon", "Map", "Description"])?;
+    write_headers(ws, fc, "Location", &["Lat", "Lon", "Map"])?;
     ws.set_column_width(fc.col, LAT_LON_COLUMN_WIDTH)?;
     ws.set_column_width(fc.col + 1, LAT_LON_COLUMN_WIDTH)?;
     ws.set_column_width(fc.col + 2, LINKED_LAT_LON_COLUMN_WIDTH)?;
-    ws.set_column_width(fc.col + 3, LOCATION_DESCRIPTION_COLUMN_WIDTH)?;
 
     for p in points {
         let hyp = match hyperlink {
@@ -754,12 +753,12 @@ fn output_tp_location(
             }
         };
 
-        write_lat_lon(ws, fc, (p.lat, p.lon), hyp, p.location.as_ref())?;
+        write_lat_lon_no_location(ws, fc, (p.lat, p.lon), hyp)?;
 
         fc.increment_row();
     }
 
-    fc.next_colour_block(4);
+    fc.next_colour_block(3);
     Ok(())
 }
 
@@ -929,7 +928,7 @@ fn write_headers(
 /// Writes a lat-lon pair with the lat in the first cell as specified
 /// by 'rc' and the lon in the next column. If 'hyperlink' is yes then
 /// a hyperlink to Google Maps is written into the third column.
-fn write_lat_lon(
+fn write_lat_lon_with_location(
     ws: &mut Worksheet,
     fc: &FormatControl,
     (lat, lon): (f64, f64),
@@ -963,6 +962,32 @@ fn write_lat_lon(
     } else {
         write_blank(ws, &fc)?;
     }
+
+    Ok(())
+}
+
+fn write_lat_lon_no_location(
+    ws: &mut Worksheet,
+    fc: &FormatControl,
+    (lat, lon): (f64, f64),
+    hyperlink: Hyperlink
+) -> Result<(), GapixError> {
+    let format = fc.lat_lon_format().set_font_color(Color::Black);
+
+    ws.write_number_with_format(fc.row, fc.col, lat, &format)?;
+    ws.write_number_with_format(fc.row, fc.col + 1, lon, &format)?;
+
+    match hyperlink {
+        Hyperlink::Yes => {
+            let url = make_hyperlink((lat, lon));
+            // TODO: Font still blue.
+            let format = format.set_align(FormatAlign::Right);
+            ws.write_url_with_format(fc.row, fc.col + 2, url, &format)?;
+        }
+        Hyperlink::No => {
+            write_blank(ws, &fc.col_offset(2))?;
+        }
+    };
 
     Ok(())
 }

@@ -425,7 +425,6 @@ impl EnrichedTrackPoint {
             ele_delta_metres: None,
             running_ascent_metres: None,
             running_descent_metres: None,
-            location: Default::default(),
         }
     }
 
