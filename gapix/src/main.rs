@@ -7,7 +7,7 @@ use gapix_core::{
     excel::{create_summary_xlsx, write_summary_to_file, Hyperlink}, geocoding::{initialise_geocoding, GeocodingOptions}, gpx_writer::{write_gpx_to_file, OutputOptions}, model::Gpx, read::read_gpx_from_file, simplification::{metres_to_epsilon, reduce_trackpoints_by_rdp}, stage::{detect_stages, StageDetectionParameters}
 };
 use join::join_input_files;
-use log::{debug, info, logger, warn};
+use log::{debug, error, info, logger, warn};
 use logging_timer::time;
 use rayon::prelude::*;
 use std::io::Write;
@@ -75,23 +75,21 @@ fn main2() -> Result<()> {
 
     // The other modes break down to 'process each file separately'.
     debug!("In per-file mode");
-    input_files.par_iter().for_each(|f| {
+    let mut results: Vec<Result<(), anyhow::Error>> = Vec::new();
+    
+    input_files.par_iter().map(|f| {
         let rof = get_required_outputs(&args, f);
         debug!("Required Output Files: {:?}", &rof);
-        let gpx = read_gpx_from_file(f).unwrap();
+        let gpx = read_gpx_from_file(f)?;
         let gpx = gpx.into_single_track();
-        analyse_gpx(&gpx, &args, &rof).unwrap();
-        simplify_gpx(gpx, &args, rof).unwrap();
-    });
+        analyse_gpx(&gpx, &args, &rof)?;
+        simplify_gpx(gpx, &args, rof)?;
+        Ok(())
+    }).collect_into_vec(&mut results);
 
-    // for f in &input_files {
-    //     let rof = get_required_outputs(&args, f);
-    //     debug!("Required Output Files: {:?}", &rof);
-    //     let gpx = read_gpx_from_file(f)?;
-    //     let gpx = gpx.into_single_track();
-    //     analyse_gpx(&gpx, &args, &rof)?;
-    //     simplify_gpx(gpx, &args, rof)?;
-    // }
+    for error in results.iter().filter(|r| r.is_err()) {
+        error!("Error while processing file (check back in log): {:?}", error);
+    }
 
     Ok(())
 }
