@@ -18,22 +18,22 @@ use crate::byte_counter::ByteCounter;
 static OPTIONS: OnceLock<GeocodingOptions> = OnceLock::new();
 
 /// A map of isocode -> Country.
-static COUNTRIES: LazyLock<HashMap<String, Country>> = LazyLock::new(|| load_countries());
+static COUNTRIES: LazyLock<HashMap<String, Country>> = LazyLock::new(load_countries);
 
 /// Given key, return the first-level country subdivision.
 /// e.g. for "GB.ENG" return "England".
 /// In the US this would be a state.
-static ADMIN_1_CODES: LazyLock<HashMap<String, String>> = LazyLock::new(|| load_admin_1_codes());
+static ADMIN_1_CODES: LazyLock<HashMap<String, String>> = LazyLock::new(load_admin_1_codes);
 
 /// Given key, return the second-level country subdivision.
 /// e.g. for "GB.ENG.J9" return "Nottinghamshire".
-static ADMIN_2_CODES: LazyLock<HashMap<String, String>> = LazyLock::new(|| load_admin_2_codes());
+static ADMIN_2_CODES: LazyLock<HashMap<String, String>> = LazyLock::new(load_admin_2_codes);
 
 /// The lowest level of places - towns, mountains, parks etc.
 /// This is where reverse-geocoding begins.
-static PLACES2: LazyLock<RTree<Place>> = LazyLock::new(|| load_places());
+static PLACES: LazyLock<RTree<Place>> = LazyLock::new(load_places);
 
-static TIMEZONES: LazyLock<tzf_rs::DefaultFinder> = LazyLock::new(|| DefaultFinder::new());
+static TIMEZONES: LazyLock<tzf_rs::DefaultFinder> = LazyLock::new(DefaultFinder::new);
 
 /// Initialises the geocoding system. This involves downloading, filtering and
 /// loading various files from geonames.org. This is done on background threads
@@ -66,7 +66,7 @@ pub fn initialise_geocoding(options: &GeocodingOptions) {
     // will cause the load process to actually run as soon as possible,
     // hopefully before the data is actually needed by the main thread.
     std::thread::spawn(|| {
-        LazyLock::force(&PLACES2);
+        LazyLock::force(&PLACES);
     });
 
     std::thread::spawn(|| {
@@ -83,14 +83,7 @@ pub fn initialise_geocoding(options: &GeocodingOptions) {
 /// Given a (lat, lon) finds the nearest place and returns a description of it.
 #[time]
 pub fn reverse_geocode_latlon(point: RTreePoint) -> Option<String> {
-    // Lookup this (lat,lon) in the R*Tree to find the Place.
-    //let tree = PLACES2.get().unwrap();
-    let place = PLACES2.nearest_neighbor(&point);
-    if place.is_none() {
-        return None;
-    }
-
-    let place = place.unwrap();
+    let place = PLACES.nearest_neighbor(&point)?;
 
     // Now use the attributes of the Place to find the country name, county etc.
     let key = format!("{}.{}.{}", place.iso_code, place.admin1, place.admin2);
@@ -121,7 +114,7 @@ pub fn get_admin2_code(key: &str) -> Option<&String> {
 
 /// Given a point, finds the nearest place in the database.
 pub fn get_nearest_place(point: RTreePoint) -> Option<&'static Place> {
-    PLACES2.nearest_neighbor(&point)
+    PLACES.nearest_neighbor(&point)
 }
 
 /// Given a point, finds the timezone.
@@ -212,7 +205,7 @@ pub struct Place {
     pub lon: f64,
     pub iso_code: String,
     pub admin1: String,
-    pub admin2: String
+    pub admin2: String,
 }
 
 pub(crate) type RTreePoint = [f64; 2];
@@ -389,7 +382,7 @@ fn load_places() -> RTree<Place> {
 #[stime]
 fn load_place(places: &mut Vec<Place>, options: &GeocodingOptions, iso_code: &str) {
     let src_filename = format!("{}.zip", iso_code);
-    let filename = download_file(&options, &src_filename);
+    let filename = download_file(options, &src_filename);
     let src_file = File::open(&filename).unwrap();
 
     let rdr = BufReader::new(src_file);
@@ -420,7 +413,7 @@ fn load_place(places: &mut Vec<Place>, options: &GeocodingOptions, iso_code: &st
             // T = mountain, hill, rock
             // U = undersea
             // V = forest, heath
-            if !(fc == "P") {
+            if fc != "P" {
                 continue;
             }
 
@@ -464,23 +457,23 @@ fn load_place(places: &mut Vec<Place>, options: &GeocodingOptions, iso_code: &st
     }
 }
 
+// TODO: Get rid of these panics.
 fn download_file(options: &GeocodingOptions, filename: &str) -> PathBuf {
     let out_filename = options.get_output_path(filename);
     if options.force_download || !Path::exists(&out_filename) {
         let url = format!("https://download.geonames.org/export/dump/{}", filename);
         let resp = reqwest::blocking::get(&url)
-            .expect(&format!("download_file: request for {} failed", filename));
+            .unwrap_or_else(|_| panic!("download_file: request for {} failed", filename));
         let body = resp
             .bytes()
-            .expect(&format!("download_file: body of {} is invalid", filename));
+            .unwrap_or_else(|_| panic!("download_file: body of {} is invalid", filename));
         debug!("Starting writing to {:?}", &out_filename);
         let file = File::create(&out_filename)
-            .expect(&format!("download_file: failed to create {}", filename));
+            .unwrap_or_else(|_| panic!("download_file: failed to create {}", filename));
         let mut writer = ByteCounter::new(file);
-        writer.write_all(&body).expect(&format!(
-            "download_file: failed to copy content to {}",
-            filename
-        ));
+        writer
+            .write_all(&body)
+            .unwrap_or_else(|_| panic!("download_file: failed to copy content to {}", filename));
 
         writer.flush().unwrap();
 
@@ -521,6 +514,6 @@ impl GeocodingOptions {
     }
 
     fn include_country(&self, isocode: &str) -> bool {
-        self.countries.iter().position(|c| c == isocode).is_some()
+        self.countries.iter().any(|c| c == isocode)
     }
 }

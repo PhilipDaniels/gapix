@@ -134,7 +134,7 @@ impl Stage {
     pub fn reverse_geocode(&self) -> Option<String> {
         let start_desc = reverse_geocode_latlon(self.start.as_rtree_point());
 
-        let desc = match self.stage_type {
+        match self.stage_type {
             StageType::Moving => {
                 let end_desc = reverse_geocode_latlon(self.end.as_rtree_point());
                 match (start_desc, end_desc) {
@@ -147,9 +147,7 @@ impl Stage {
                 }
             }
             StageType::Control => start_desc,
-        };
-
-        desc
+        }
     }
 
     /// Returns the duration of the stage.
