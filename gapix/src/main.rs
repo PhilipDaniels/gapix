@@ -88,10 +88,7 @@ fn main2() -> Result<()> {
 
         if let Err(err) = read_gpx_from_file(f).map(|gpx| {
             let gpx = gpx.into_single_track();
-            match analyse_gpx(&gpx, &args, &rof) {
-                std::result::Result::Ok(_) => simplify_gpx(gpx, &args, rof),
-                Err(e) => Err(e),
-            }
+            analyse_gpx(&gpx, &args, &rof).map(|_| simplify_gpx(gpx, &args, rof))
         }) {
             error!("Error while processing file {:?}: {}", f, err)
         };
