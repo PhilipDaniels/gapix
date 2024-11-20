@@ -97,23 +97,6 @@ fn main2() -> Result<()> {
         };
     });
 
-    // input_files.par_iter().for_each(|f| {
-    //     let rof = get_required_outputs(&args, f);
-    //     debug!("Required Output Files: {:?}", &rof);
-
-    //     let _ = read_gpx_from_file(f)
-    //         .map(|gpx| {
-    //             let gpx = gpx.into_single_track();
-    //             match analyse_gpx(&gpx, &args, &rof) {
-    //                 std::result::Result::Ok(_) => simplify_gpx(gpx, &args, rof),
-    //                 Err(e) => Err(e),
-    //             }
-    //         })
-    //         .inspect_err(|err| {
-    //             error!("Error while processing file {:?}: {}", f, err);
-    //         });
-    // });
-
     Ok(())
 }
 

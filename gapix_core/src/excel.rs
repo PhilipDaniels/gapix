@@ -8,7 +8,6 @@ use std::{
 use chrono::{DateTime, Datelike, TimeDelta, TimeZone, Timelike, Utc};
 use log::info;
 use logging_timer::time;
-use rayon::prelude::*;
 use rust_xlsxwriter::{
     Color, ExcelDateTime, Format, FormatAlign, FormatBorder, FormatPattern, Url, Workbook,
     Worksheet,
@@ -205,15 +204,6 @@ fn output_stage_location(
     ws.set_column_width(fc.col + 1, LAT_LON_COLUMN_WIDTH)?;
     ws.set_column_width(fc.col + 2, LINKED_LAT_LON_COLUMN_WIDTH)?;
     ws.set_column_width(fc.col + 3, LOCATION_DESCRIPTION_COLUMN_WIDTH)?;
-
-//    let mut results: Vec<(usize, Option<String>)> = Vec::new();
-
-    // TODO: Pass these in.
-    // stages.par_iter().enumerate()
-    //     .map(|(idx, stage)| (idx, stage.reverse_geocode()))
-    //     .collect_into_vec(&mut results);
-
-//    info!("Geocode all = {:?}", results);
 
     for stage in stages {
         write_lat_lon_with_location_description(ws, fc, Hyperlink::Yes, stage)?;
