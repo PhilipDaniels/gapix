@@ -4,7 +4,13 @@ use clap::builder::styling::AnsiColor;
 use directories::ProjectDirs;
 use env_logger::Builder;
 use gapix_core::{
-    excel::{create_summary_xlsx, write_summary_to_file, Hyperlink}, geocoding::{initialise_geocoding, GeocodingOptions}, gpx_writer::{write_gpx_to_file, OutputOptions}, model::Gpx, read::read_gpx_from_file, simplification::{metres_to_epsilon, reduce_trackpoints_by_rdp}, stage::{detect_stages, StageDetectionParameters}
+    excel::{create_summary_xlsx, write_summary_to_file, Hyperlink},
+    geocoding::{initialise_geocoding, GeocodingOptions},
+    gpx_writer::{write_gpx_to_file, OutputOptions},
+    model::Gpx,
+    read::read_gpx_from_file,
+    simplification::{metres_to_epsilon, reduce_trackpoints_by_rdp},
+    stage::{detect_stages, StageDetectionParameters},
 };
 use join::join_input_files;
 use log::{debug, error, info, logger, warn};
@@ -52,7 +58,7 @@ fn main2() -> Result<()> {
         warn!("No .gpx files specified, exiting");
         return Ok(());
     }
-    
+
     let geo_opt = get_geocoding_options(&args);
     initialise_geocoding(&geo_opt);
 
@@ -75,21 +81,29 @@ fn main2() -> Result<()> {
 
     // The other modes break down to 'process each file separately'.
     debug!("In per-file mode");
-    let mut results: Vec<Result<(), anyhow::Error>> = Vec::new();
-    
-    input_files.par_iter().map(|f| {
-        let rof = get_required_outputs(&args, f);
-        debug!("Required Output Files: {:?}", &rof);
-        let gpx = read_gpx_from_file(f)?;
-        let gpx = gpx.into_single_track();
-        analyse_gpx(&gpx, &args, &rof)?;
-        simplify_gpx(gpx, &args, rof)?;
-        Ok(())
-    }).collect_into_vec(&mut results);
+    let mut results: Vec<()> = Vec::new();
 
-    for error in results.iter().filter(|r| r.is_err()) {
-        error!("Error while processing file (check back in log): {:?}", error);
-    }
+    input_files
+        .par_iter()
+        .map(|f| {
+            let rof = get_required_outputs(&args, f);
+            debug!("Required Output Files: {:?}", &rof);
+
+            let _ = read_gpx_from_file(f)
+                .map(|gpx| {
+                    let gpx = gpx.into_single_track();
+                    match analyse_gpx(&gpx, &args, &rof) {
+                        std::result::Result::Ok(_) => simplify_gpx(gpx, &args, rof),
+                        Err(e) => Err(e),
+                    }
+                })
+                .inspect_err(|err| {
+                    error!("Error while processing file {:?}: {}", f, err);
+                });
+
+            ()
+        })
+        .collect_into_vec(&mut results);
 
     Ok(())
 }
