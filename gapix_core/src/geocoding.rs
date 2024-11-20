@@ -8,7 +8,7 @@ use std::{
 
 use chrono_tz::Tz;
 use geo::{point, GeodesicDistance};
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use logging_timer::{stime, time};
 use rstar::{PointDistance, RTree, RTreeObject, AABB};
 use tzf_rs::DefaultFinder;
@@ -18,11 +18,13 @@ use crate::byte_counter::ByteCounter;
 static OPTIONS: OnceLock<GeocodingOptions> = OnceLock::new();
 
 /// A map of isocode -> Country.
+/// TODO: Currently unused.
 static COUNTRIES: LazyLock<HashMap<String, Country>> = LazyLock::new(load_countries);
 
 /// Given key, return the first-level country subdivision.
 /// e.g. for "GB.ENG" return "England".
 /// In the US this would be a state.
+/// TODO: Currently unused.
 static ADMIN_1_CODES: LazyLock<HashMap<String, String>> = LazyLock::new(load_admin_1_codes);
 
 /// Given key, return the second-level country subdivision.
@@ -33,6 +35,8 @@ static ADMIN_2_CODES: LazyLock<HashMap<String, String>> = LazyLock::new(load_adm
 /// This is where reverse-geocoding begins.
 static PLACES: LazyLock<RTree<Place>> = LazyLock::new(load_places);
 
+/// This is used to lookup a timezone (in string form such as "Europe/London")
+/// from a (lat,lon) pair.
 static TIMEZONES: LazyLock<tzf_rs::DefaultFinder> = LazyLock::new(DefaultFinder::new);
 
 /// Initialises the geocoding system. This involves downloading, filtering and
@@ -40,14 +44,24 @@ static TIMEZONES: LazyLock<tzf_rs::DefaultFinder> = LazyLock::new(DefaultFinder:
 /// so that hopefully the structures will be available as soon as they are
 /// needed, which is when the first stage analysis is done.
 #[time]
-pub fn initialise_geocoding(options: &GeocodingOptions) {
+pub fn initialise_geocoding(mut options: GeocodingOptions) {
+    // Try and create the download folder once. If this fails, carry on so that
+    // the statics get initialised, but set a flag so that the download process
+    // is disabled: the statics will get initialised to empty sets (sentinels),
+    // which effectively disables geocoding while keeping a simple API.
     if let Some(p) = &options.download_folder {
-        fs::create_dir_all(p).unwrap();
+        match fs::create_dir_all(p) {
+            Ok(_) => options.download_folder_exists = true,
+            Err(_) => {
+                error!("Could not create download folder {:?}", p);
+                options.download_folder_exists = false;
+            }
+        }
     }
 
-    // Clone `options` and stuff it somewhere that other threads can use it.
-    // This runs on the main thread and is very quick, so we can assume in the
-    // loading threads that the value is set (i.e. we can just unwrap).
+    // Stuff `options` somewhere that other threads can use it. This runs on the
+    // main thread and is very quick, so we can assume in the spawned loading
+    // threads that the value is set (i.e. we can just unwrap).
     //
     // This is to work around the fact that OnceLock::get() does not block, see
     // the unstabilized API: `wait()` which we would prefer to use instead.
@@ -57,8 +71,8 @@ pub fn initialise_geocoding(options: &GeocodingOptions) {
     // `new` function, which is a closure which doesn't normally accept
     // parameters. And this is how we do that!
     OPTIONS
-        .set(options.clone())
-        .expect("Setting global GeocodingOptions should work");
+        .set(options)
+        .expect("Setting global GeocodingOptions should always work");
     let options = OPTIONS.get();
     assert!(options.is_some());
 
@@ -70,14 +84,12 @@ pub fn initialise_geocoding(options: &GeocodingOptions) {
     });
 
     std::thread::spawn(|| {
-        LazyLock::force(&ADMIN_2_CODES);
-    });
-
-    std::thread::spawn(|| {
         LazyLock::force(&TIMEZONES);
     });
 
-    // TODO: Either use or remove the other statics.
+    std::thread::spawn(|| {
+        LazyLock::force(&ADMIN_2_CODES);
+    });
 }
 
 /// Given a (lat, lon) finds the nearest place and returns a description of it.
@@ -117,12 +129,16 @@ pub fn get_nearest_place(point: RTreePoint) -> Option<&'static Place> {
     PLACES.nearest_neighbor(&point)
 }
 
+/// Returns the name of the timezone at point, such as "Europe/London".
+pub fn get_timezone_name(point: RTreePoint) -> &'static str {
+    TIMEZONES.get_tz_name(point[1], point[0])
+}
+
 /// Given a point, finds the timezone.
 pub fn get_timezone(point: RTreePoint) -> Option<Tz> {
-    let tzname = TIMEZONES.get_tz_name(point[1], point[0]);
     // I suppose parse() might fail, we are passing timezone names from tzf-rs
     // into chrono-tz. They SHOULD be the same though.
-    let tz: Tz = tzname.parse().ok()?;
+    let tz: Tz = get_timezone_name(point).parse().ok()?;
     Some(tz)
 }
 
@@ -241,20 +257,30 @@ impl PointDistance for Place {
 
 #[stime]
 fn load_countries() -> HashMap<String, Country> {
-    let options = OPTIONS.get().unwrap();
+    let options = OPTIONS
+        .get()
+        .expect("OPTIONS should be set early on the main thread");
 
-    if options.disable_geocoding() {
-        return HashMap::new();
-    }
-
-    let filename = download_file(options, "countryInfo.txt");
-
-    let src_file = File::open(&filename).unwrap();
-    let rdr = BufReader::new(src_file);
     let mut countries = HashMap::new();
 
+    if options.disable_geocoding() {
+        return countries;
+    }
+
+    let rdr = match download_file_and_open(options, "countryInfo.txt") {
+        Some(rdr) => rdr,
+        None => return countries,
+    };
+
     for line in rdr.lines() {
-        let line = line.unwrap();
+        let line = match line {
+            Ok(line) => line,
+            Err(err) => {
+                error!("load_countries: Error while reading line: {}", err);
+                return countries;
+            }
+        };
+
         if line.starts_with('#') {
             continue;
         }
@@ -266,13 +292,22 @@ fn load_countries() -> HashMap<String, Country> {
         if iso_code.is_empty() || name.is_empty() || continent_code.is_empty() {
             warn!("countryInfo.txt: Skipping line due to one or more empty fields. iso_code={iso_code}, name={name}, continent_code={continent_code}");
         } else {
-            let continent = Continent::try_from(continent_code).unwrap();
-            let country = Country {
-                iso_code: iso_code.into(),
-                name: name.into(),
-                continent,
+            match Continent::try_from(continent_code) {
+                Ok(continent) => {
+                    let country = Country {
+                        iso_code: iso_code.into(),
+                        name: name.into(),
+                        continent,
+                    };
+                    countries.insert(iso_code.to_string(), country);
+                }
+                Err(_) => {
+                    error!(
+                        "load_countries: Not a valid continent code, skipping line {}",
+                        continent_code
+                    );
+                }
             };
-            countries.insert(iso_code.to_string(), country);
         }
     }
 
@@ -282,19 +317,30 @@ fn load_countries() -> HashMap<String, Country> {
 
 #[stime]
 fn load_admin_1_codes() -> HashMap<String, String> {
-    let options = OPTIONS.get().unwrap();
+    let options = OPTIONS
+        .get()
+        .expect("OPTIONS should be set early on the main thread");
 
-    if options.disable_geocoding() {
-        return HashMap::new();
-    }
-
-    let filename = download_file(options, "admin1CodesASCII.txt");
-    let src_file = File::open(&filename).unwrap();
-    let rdr = BufReader::new(src_file);
     let mut codes = HashMap::new();
 
+    if options.disable_geocoding() {
+        return codes;
+    }
+
+    let rdr = match download_file_and_open(options, "admin1CodesASCII.txt") {
+        Some(rdr) => rdr,
+        None => return codes,
+    };
+
     for line in rdr.lines() {
-        let line = line.unwrap();
+        let line = match line {
+            Ok(line) => line,
+            Err(err) => {
+                error!("load_admin_1_codes: Error while reading line: {}", err);
+                return codes;
+            }
+        };
+
         let fields: Vec<_> = line.split('\t').collect();
         let key = fields[0];
         let isocode = &key[0..2];
@@ -319,19 +365,30 @@ fn load_admin_1_codes() -> HashMap<String, String> {
 
 #[stime]
 fn load_admin_2_codes() -> HashMap<String, String> {
-    let options = OPTIONS.get().unwrap();
+    let options = OPTIONS
+        .get()
+        .expect("OPTIONS should be set early on the main thread");
 
-    if options.disable_geocoding() {
-        return HashMap::new();
-    }
-
-    let filename = download_file(options, "admin2Codes.txt");
-    let src_file = File::open(&filename).unwrap();
-    let rdr = BufReader::new(src_file);
     let mut codes = HashMap::new();
 
+    if options.disable_geocoding() {
+        return codes;
+    }
+
+    let rdr = match download_file_and_open(options, "admin2Codes.txt") {
+        Some(rdr) => rdr,
+        None => return codes,
+    };
+
     for line in rdr.lines() {
-        let line = line.unwrap();
+        let line = match line {
+            Ok(line) => line,
+            Err(err) => {
+                error!("load_admin_2_codes: Error while reading line: {}", err);
+                return codes;
+            }
+        };
+
         let fields: Vec<_> = line.split('\t').collect();
         let key = fields[0];
         let isocode = &key[0..2];
@@ -356,7 +413,9 @@ fn load_admin_2_codes() -> HashMap<String, String> {
 
 #[stime]
 fn load_places() -> RTree<Place> {
-    let options = OPTIONS.get().unwrap();
+    let options = OPTIONS
+        .get()
+        .expect("OPTIONS should be set early on the main thread");
 
     if options.disable_geocoding() {
         return RTree::new();
@@ -382,24 +441,40 @@ fn load_places() -> RTree<Place> {
 #[stime]
 fn load_place(places: &mut Vec<Place>, options: &GeocodingOptions, iso_code: &str) {
     let src_filename = format!("{}.zip", iso_code);
-    let filename = download_file(options, &src_filename);
-    let src_file = File::open(&filename).unwrap();
 
-    let rdr = BufReader::new(src_file);
+    let rdr = match download_file_and_open(options, &src_filename) {
+        Some(rdr) => rdr,
+        None => return,
+    };
+
     let mut zip = zip::ZipArchive::new(rdr).expect("ZIP can be opened");
 
     let expected_filename = format!("{}.txt", iso_code);
     let mut place_count = 0;
     for i in 0..zip.len() {
-        let zip_entry = zip.by_index(i).unwrap();
+        let zip_entry = match zip.by_index(i) {
+            Ok(entry) => entry,
+            Err(err) => {
+                error!("load_place({iso_code}): Could not extract zip entry {i} due to error {err}, ignoring entry but continuing to scan the zip");
+                continue;
+            }
+        };
+
         if zip_entry.name() != expected_filename {
             continue;
         }
 
-        debug!("Reading {} from {:?}", zip_entry.name(), &filename);
+        debug!("Reading {} from {:?}", zip_entry.name(), &src_filename);
         let rdr = BufReader::new(zip_entry);
         for line in rdr.lines() {
-            let line = line.unwrap();
+            let line = match line {
+                Ok(line) => line,
+                Err(err) => {
+                    error!("load_place({iso_code}): Error while reading line: {err}",);
+                    return;
+                }
+            };
+
             let fields: Vec<_> = line.split('\t').collect();
             let fc = fields[6];
 
@@ -457,25 +532,77 @@ fn load_place(places: &mut Vec<Place>, options: &GeocodingOptions, iso_code: &st
     }
 }
 
-// TODO: Get rid of these panics.
-fn download_file(options: &GeocodingOptions, filename: &str) -> PathBuf {
+fn download_file_and_open(options: &GeocodingOptions, filename: &str) -> Option<BufReader<File>> {
+    match download_file(options, filename) {
+        Some(filename) => match File::open(&filename) {
+            Ok(src_file) => {
+                let rdr = BufReader::new(src_file);
+                Some(rdr)
+            }
+            Err(_) => {
+                error!("Could not open downloaded file {:?}", filename);
+                None
+            }
+        },
+        None => None,
+    }
+}
+
+/// Downloads the specified file from geonames.org. If an error occurs during
+/// any part of the process it is logged and None is returned.
+fn download_file(options: &GeocodingOptions, filename: &str) -> Option<PathBuf> {
+    assert!(!options.disable_geocoding());
+    
     let out_filename = options.get_output_path(filename);
     if options.force_download || !Path::exists(&out_filename) {
         let url = format!("https://download.geonames.org/export/dump/{}", filename);
-        let resp = reqwest::blocking::get(&url)
-            .unwrap_or_else(|_| panic!("download_file: request for {} failed", filename));
-        let body = resp
-            .bytes()
-            .unwrap_or_else(|_| panic!("download_file: body of {} is invalid", filename));
-        debug!("Starting writing to {:?}", &out_filename);
-        let file = File::create(&out_filename)
-            .unwrap_or_else(|_| panic!("download_file: failed to create {}", filename));
-        let mut writer = ByteCounter::new(file);
-        writer
-            .write_all(&body)
-            .unwrap_or_else(|_| panic!("download_file: failed to copy content to {}", filename));
 
-        writer.flush().unwrap();
+        let resp = match reqwest::blocking::get(&url) {
+            Ok(resp) => resp,
+            Err(_) => {
+                error!("download_file: request for {} failed", filename);
+                return None;
+            }
+        };
+
+        let body = match resp.bytes() {
+            Ok(body) => body,
+            Err(_) => {
+                error!("download_file: body of {} is invalid", filename);
+                return None;
+            }
+        };
+
+        debug!("Starting writing to {:?}", &out_filename);
+
+        let file = match File::create(&out_filename) {
+            Ok(file) => file,
+            Err(_) => {
+                error!("download_file: failed to create {}", filename);
+                return None;
+            }
+        };
+
+        let mut writer = ByteCounter::new(file);
+
+        match writer.write_all(&body) {
+            Ok(_) => {}
+            Err(_) => {
+                error!(
+                    "download_file: failed to write download content to {}",
+                    filename
+                );
+                return None;
+            }
+        };
+
+        match writer.flush() {
+            Ok(_) => {}
+            Err(_) => {
+                error!("download_file: failed to flush file {}", filename);
+                return None;
+            }
+        }
 
         debug!(
             "Wrote {} bytes to {:?}",
@@ -486,7 +613,7 @@ fn download_file(options: &GeocodingOptions, filename: &str) -> PathBuf {
         debug!("File {:?} already exists, skipping download (specify --force-geonames-download to change this behaviour)", &out_filename);
     }
 
-    out_filename
+    Some(out_filename)
 }
 
 #[derive(Debug, Clone, Default)]
@@ -500,11 +627,27 @@ pub struct GeocodingOptions {
     /// If true, forces a re-download of the data files even if they already
     /// exist. This is a good way of keeping them up to date.
     pub force_download: bool,
+    /// If false, indicates we were not able to create the download folder,
+    /// and hence geocoding should be disabled.
+    download_folder_exists: bool,
 }
 
 impl GeocodingOptions {
+    pub fn new(
+        download_folder: Option<PathBuf>,
+        countries: Vec<String>,
+        force_download: bool,
+    ) -> Self {
+        Self {
+            download_folder,
+            countries,
+            force_download,
+            download_folder_exists: false,
+        }
+    }
+
     fn disable_geocoding(&self) -> bool {
-        self.download_folder.is_none() || self.countries.is_empty()
+        self.download_folder.is_none() || self.countries.is_empty() || !self.download_folder_exists
     }
 
     fn get_output_path<P: AsRef<Path>>(&self, filename: P) -> PathBuf {

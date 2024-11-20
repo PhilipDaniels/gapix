@@ -33,12 +33,13 @@ fn main() -> Result<()> {
 }
 
 fn get_geocoding_options(args: &Args) -> GeocodingOptions {
-    let dirs = ProjectDirs::from("", "", env!("CARGO_PKG_NAME"));
-    GeocodingOptions {
-        download_folder: dirs.map(|d| d.config_local_dir().to_path_buf()),
-        countries: args.countries.clone(),
-        force_download: args.force_geonames_download,
-    }
+    let project_dirs = ProjectDirs::from("", "", env!("CARGO_PKG_NAME"));
+    GeocodingOptions::new(
+        project_dirs.map(|d| d.config_local_dir().to_path_buf()),
+        args.countries.clone(),
+        args.force_geonames_download
+    )
+
 }
 
 #[time]
@@ -60,7 +61,7 @@ fn main2() -> Result<()> {
     }
 
     let geo_opt = get_geocoding_options(&args);
-    initialise_geocoding(&geo_opt);
+    initialise_geocoding(geo_opt);
 
     // In join mode we join all the input files into a single file
     // and then process it. There is nothing to be done after that.
