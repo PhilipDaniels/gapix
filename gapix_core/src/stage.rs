@@ -10,6 +10,7 @@ use chrono::{DateTime, TimeDelta, Utc};
 use geo::{GeodesicDistance, Point};
 use log::{debug, info, warn};
 use logging_timer::time;
+use rayon::prelude::*;
 
 use crate::{
     geocoding::reverse_geocode_latlon,
@@ -267,6 +268,16 @@ impl<'sl> IntoIterator for &'sl StageList {
 }
 
 impl StageList {
+    /// Returns a Rayon parallel iterator over the stages.
+    pub fn par_iter(&self) -> rayon::slice::Iter<'_, Stage> {
+        self.0.par_iter()
+    }
+
+    /// Returns a Rayon mutable parallel iterator over the stages.
+    pub fn par_iter_mut(&mut self) -> rayon::slice::IterMut<'_, Stage> {
+        self.0.par_iter_mut()
+    }
+
     /// Returns the indexes of all the TrackPoints that have been
     /// highlighted as 'special' in some way, e.g. the point
     /// of min elevation. This is so we can force a hyperlink

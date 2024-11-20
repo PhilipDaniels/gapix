@@ -66,11 +66,15 @@ pub fn initialise_geocoding(options: &GeocodingOptions) {
     // will cause the load process to actually run as soon as possible,
     // hopefully before the data is actually needed by the main thread.
     std::thread::spawn(|| {
-        let _ = &*PLACES2;
+        LazyLock::force(&PLACES2);
     });
 
     std::thread::spawn(|| {
-        let _ = &*ADMIN_2_CODES;
+        LazyLock::force(&ADMIN_2_CODES);
+    });
+
+    std::thread::spawn(|| {
+        LazyLock::force(&TIMEZONES);
     });
 
     // TODO: Either use or remove the other statics.

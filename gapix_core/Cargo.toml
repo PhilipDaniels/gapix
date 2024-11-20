@@ -12,6 +12,7 @@ indent_write = { git = "https://github.com/PhilipDaniels/indent-write.git", bran
 log = { workspace = true }
 logging_timer = { workspace = true }
 quick-xml = { version = "0.37" }
+rayon = { workspace = true }
 reqwest = { version = "0.12", features = ["blocking"] }
 rstar = "0.12.2"
 rust_xlsxwriter = "0.75"

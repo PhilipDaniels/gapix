@@ -9,6 +9,7 @@ use gapix_core::{
 use join::join_input_files;
 use log::{debug, info, logger, warn};
 use logging_timer::time;
+use rayon::prelude::*;
 use std::io::Write;
 
 mod args;
@@ -74,14 +75,23 @@ fn main2() -> Result<()> {
 
     // The other modes break down to 'process each file separately'.
     debug!("In per-file mode");
-    for f in &input_files {
+    input_files.par_iter().for_each(|f| {
         let rof = get_required_outputs(&args, f);
         debug!("Required Output Files: {:?}", &rof);
-        let gpx = read_gpx_from_file(f)?;
+        let gpx = read_gpx_from_file(f).unwrap();
         let gpx = gpx.into_single_track();
-        analyse_gpx(&gpx, &args, &rof)?;
-        simplify_gpx(gpx, &args, rof)?;
-    }
+        analyse_gpx(&gpx, &args, &rof).unwrap();
+        simplify_gpx(gpx, &args, rof).unwrap();
+    });
+
+    // for f in &input_files {
+    //     let rof = get_required_outputs(&args, f);
+    //     debug!("Required Output Files: {:?}", &rof);
+    //     let gpx = read_gpx_from_file(f)?;
+    //     let gpx = gpx.into_single_track();
+    //     analyse_gpx(&gpx, &args, &rof)?;
+    //     simplify_gpx(gpx, &args, rof)?;
+    // }
 
     Ok(())
 }
