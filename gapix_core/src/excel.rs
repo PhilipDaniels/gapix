@@ -1159,7 +1159,6 @@ fn write_utc_date_as_local_option(
 }
 
 fn date_to_excel_date<G: TimeZone>(date: DateTime<G>) -> Result<ExcelDateTime, GapixError> {
-    // TODO: Check 0/1 basis.
     let excel_date = ExcelDateTime::from_ymd(
         date.year().try_into()?,
         date.month().try_into()?,

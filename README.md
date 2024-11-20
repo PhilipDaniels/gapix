@@ -82,8 +82,6 @@ Or build from source using cargo.
 * Has only been tested on my own GPX files from a Garmin Edge 1040.
 
 # TODO
-- Use Rayon over each input file
-- Can we do the calls to reverse_geocode() in parallel when writing out the stages?
 - FIT file parsing
 - Move model into its own crate.
 - Track splitting. Put file-level waypoints on the nearest split track.

@@ -89,7 +89,8 @@ mod tests {
         };
     }
 
-    // TODO: Log this as a bug, it should not allow extra attributes.
+    // TODO: This as a bug, it should not allow extra attributes.
+    // Mentioned on existing issue: https://github.com/tafia/quick-xml/issues/641
     #[test]
     fn extra_attributes() {
         let mut xml_reader = Reader::from_str(r#"<?xml version="1.0" foo="bar"?>"#);

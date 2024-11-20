@@ -366,7 +366,7 @@ impl EnrichedGpx {
                     assert!(speed >= 0.0);
                     Some(speed)
                 }
-                None => todo!(),
+                None => None,
             };
 
             // How long it took to get here.
