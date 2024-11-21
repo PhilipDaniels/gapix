@@ -13,10 +13,10 @@ accept FIT files.
 GaPiX never changes your input files, all changes are written to new files.
 
 # Joining GPX Files
-Sometimes a ride might get split up by your device into multiple tracks. If this
-is the case, GaPiX can join them together into a new file with a single track.
-(**n.b.** This is not technically correct, but in many cases is a reasonable
-thing to do if the break in tracks is short).
+Sometimes a ride might get split up by your device into multiple tracks due to
+power or GPS interruption. Or perhaps you just rode it in several stages in the
+first place. If this is the case, GaPiX can join them together into a new file
+with a single track.
 
 ```shell
 gapix --join *.gpx
@@ -42,7 +42,7 @@ places are sufficient to record lat-long to within 11cm of accuracy: see
 https://en.wikipedia.org/wiki/Decimal_degrees
 
 This program shrinks the files down by simplifying the individual trackpoints to
-just lat-long, elevation and time and optionally by applying the
+just lat-long, elevation and time and by applying the
 [Ramer-Douglas-Peucker algorithm](https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm)
 to eliminate unnecessary trackpoints - that is, those that lie along the line.
 
@@ -56,10 +56,8 @@ For each input file "FILE.gpx", a new file "FILE.simplified.gpx" will be written
 alongside.
 
 ## Size Reduction Estimates
-The original file is 11.5Mb with 31,358 trackpoints and was 200km long.
-
-It was from a Garmin Edge 1040 which records 1 trackpoint every second,
-including a lot of extension data such as heartrate and temperature.
+An original file from a Garmin Edge 1040 is 11.5Mb with 31,358 trackpoints and
+was 200km long.
 
 |--metres|Output Points|File Size|Quality|
 |-|-|-|-|
@@ -108,7 +106,7 @@ specify the list of countries on the command line using the `--countries`
 option:
 
 ```shell
-gapix --analyse --countries=GB,FR,IE,US
+gapix --analyse --countries=GB,FR,IE,US *.gpx
 ```
 
 The download is normally only done once, the first time you specify that
@@ -136,6 +134,8 @@ $env:RUST_LOG=DEBUG
 gapix.exe *.gpx
 ```
 
+Note that GaPiX processes all the input files in parallel, so the log might be a
+bit confusing if you ask it to process many files at once.
 
 # Installation
 GaPiX is written in Rust. The EXE is self contained. There is a release on
