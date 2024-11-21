@@ -1,67 +1,64 @@
-# gapix
+# GaPiX
 
 GaPiX: GPX analysis and information
 
-A small command-line tool to join and simplify GPX tracks.
+GaPiX is a command-line tool to simplify, analyse and join GPX tracks. The basic
+usage is `gapix *.gpx`. By default GaPiX does not overwrite output files that
+already exist, but this can be overridden. You can get a list of all the options
+by running `gapix --help`.
 
-I wrote this tool because the GPX files produced by my Garmin
-Edge 1040 are huge - about 13MB for a 200km ride. This is far
-too large for [Audax UK](https://www.audax.uk/) to validate
-for a DIY ride (max file size of 1.25Mb). The files are so
-large because the Edge 1040 writes a trackpoint every second, each
-one has extra information such as heart rate and temperature, and it
-records lat-long to a ridiculous number of decimal places,
-e.g. "53.0758009292185306549072265625" and elevation likewise
-to femtometre precision "173.8000030517578125".
+GaPiX currently only reads `.gpx` files, but I intend to extend it to also
+accept FIT files.
 
-In reality, the device only measures elevation to 1 decimal place and
-6 decimal places are sufficient to record lat-long to within 11cm
-of accuracy: see https://en.wikipedia.org/wiki/Decimal_degrees
+GaPiX never changes your input files, all changes are written to new files.
 
-This program shrinks the files down by simplifying the individual
-trackpoints to just lat-long, elevation and time and optionally
-by applying the [Ramer-Douglas-Peucker algorithm](https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm) to
-eliminate unnecessary trackpoints - that is, those that lie
-along the line.
+# Joining GPX Files
+Sometimes a ride might get split up by your device into multiple tracks. If this
+is the case, GaPiX can join them together into a new file with a single track.
+(**n.b.** This is not technically correct, but in many cases is a reasonable
+thing to do if the break in tracks is short).
 
+```shell
+gapix --join *.gpx
+```
 
-# How to use
+All the files will be joined into a new file with one track. The name of the new
+file will be based on the name of the first file with "joined.gpx" appended.
+Joining can be combined with simplification and analysis.
 
-When **gapix** is run it looks for its input files
-in the same folder as the exe. This is mainly for convenience -
-I have a known folder containing a copy of the exe, I then
-drop the GPXs I want to process into that folder and double-click
-a batch file setup with the appropriate command line options
-to process them. The program produces an output
-filename ending in ".simplified.gpx" and never overwrites the
-source file. If the output file already exists, nothing happens.
+# Simplification
 
-There are two command line options:
+I initially wrote this tool because the GPX files produced by my Garmin Edge
+1040 are huge - about 13MB for a 200km ride. This is far too large for [Audax
+UK](https://www.audax.uk/) to validate for a DIY ride (max file size of 1.25Mb).
+The files are so large because the Edge 1040 writes a trackpoint every second,
+each one has extra information such as heart rate and temperature, and it
+records lat-long to a ridiculous number of decimal places, e.g.
+"53.0758009292185306549072265625" and elevation likewise to femtometre precision
+"173.8000030517578125".
 
-* `--metres=NN` - simplify the output file by applying the RDP
-  algorithm with an accurancy of NN metres. 10 is a good value
-  (see below for some estimates of reduction sizes).
-* `--join` - joins all the input files together, producing
-  one file with a single track. The name of the first file is
-  used to derive the name of the output file.
+In reality, the device only measures elevation to 1 decimal place and 6 decimal
+places are sufficient to record lat-long to within 11cm of accuracy: see
+https://en.wikipedia.org/wiki/Decimal_degrees
 
-If you specify both options then the input files will be joined
-and then the result file simplified. But typically, I have
-two folders setup with separate batch files, one for
-joining and one for simplifying. For example, in my
-"simplify" folder I have a batch file with the command
+This program shrinks the files down by simplifying the individual trackpoints to
+just lat-long, elevation and time and optionally by applying the
+[Ramer-Douglas-Peucker algorithm](https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm)
+to eliminate unnecessary trackpoints - that is, those that lie along the line.
 
-`gapix.exe --metres=10`
+Usage as follows:
 
-which gives a very good size reduction while still being an
-excellent fit to the road.
+```shell
+gapix --metres=5 *.gpx
+```
 
+For each input file "FILE.gpx", a new file "FILE.simplified.gpx" will be written
+alongside.
 
-# Size Reduction Estimates
-
+## Size Reduction Estimates
 The original file is 11.5Mb with 31,358 trackpoints and was 200km long.
 
-It was from a Garmin Edge 1040 which records 1 trackpoint every second. 
+It was from a Garmin Edge 1040 which records 1 trackpoint every second,
 including a lot of extension data such as heartrate and temperature.
 
 |--metres|Output Points|File Size|Quality|
@@ -73,33 +70,88 @@ including a lot of extension data such as heartrate and temperature.
 |50 |387 (1.2%) |51Kb |Poor - cuts off a lot of corners|
 |100|236 (0.8%) |31Kb |Very poor - significant corner truncation|
 
-# Installation
 
-There is a release on Github, one for Windows and one for Linux.
-Or build from source using cargo.
+# Analysis Spreadsheet
+GaPiX was written by, and primarily intended for, use by audaxers (randonneurs).
+It can produce a spreadsheet (.xlsx format) which breaks rides down into Stages,
+where a Stage is either Moving or a Control (a stop for food). Detection of
+controls is automatic based on you not moving for a while. This is not always
+100% foolproof, as there is no real way of distinguishing between a Control stop
+and a long pause for traffic lights or a bathroom break. So there are several
+command line options which allow you tweak the Control detection, the defaults
+work fine in most cases but you can tweak them:
+
+- `--analyse`: Turns on analysis
+
+The three options for Control detection are:
+
+- `--control-speed`: Dropping below this speed is used to *potentially* signal
+  the start of a Control.
+- `--min-control-time`: How long you must be stopped for this stop to be
+  considered a Control.
+- `--control-resumption-distance`: How far you must move from your Control stop
+  to be considered Moving again. This parameter is designed to deal with you pushing your bike around
+  the car park or taking the GPS in the store with you.
+
+This just controls the output:
+
+- `trackpoint-hyperlinks`: When writing the .xlsx, whether to include a
+  hyperlink to Google Maps for each trackpoint. This can be handy when
+  debugging, but it will slow down opening the spreadsheet a lot if you use
+  LibreOffice (I don't have Excel so I don't know about that).
+
+When doing Analysis, GaPiX will attempt to reverse-geocode your ride stages.
+This involves looking up a placename from its (lat,lon) coordinate. In order to
+do this GaPiX needs a database of places. GaPiX will automatically download this
+from [geonames.org](https://www.geonames.org/) and cache it locally. You need to
+specify the list of countries on the command line using the `--countries`
+option:
+
+```shell
+gapix --analyse --countries=GB,FR,IE,US
+```
+
+The download is normally only done once, the first time you specify that
+country. To force a re-download, use the `force-geonames-download` flag. It's
+not necessary to do this often, new settlements aren't created every day.
+
+
+# Other Options
+- `--force`: always re-generate and overwrite output files, even if they already
+  exist.
+
+
+# Logging
+GaPiX normally runs quietly, but you can get a lot of detail by enabling
+logging to the console using the `RUST_LOG` environment variable. On Linux:
+
+```shell
+RUST_LOG=DEBUG gapix *.gpx
+```
+
+and on Windows: 
+
+```shell
+$env:RUST_LOG=DEBUG
+gapix.exe *.gpx
+```
+
+
+# Installation
+GaPiX is written in Rust. The EXE is self contained. There is a release on
+Github which contains files for Windows and Linux. Or build from source using
+[cargo](https://doc.rust-lang.org/cargo)
+
+```shell
+git clone https://github.com/PhilipDaniels/gapix
+cd gapix
+cargo install --path .
+```
+
+If you don't have Rust, you can install it from [rustup](https://rustup.rs/)
 
 # Caveats
-* Has only been tested on my own GPX files from a Garmin Edge 1040.
-
-# TODO
-- FIT file parsing
-- Move model into its own crate.
-- Track splitting. Put file-level waypoints on the nearest split track.
-- Waypoint processing for warnings etc.
-- XLSX: Create images to represent the stage profiles.
-- XLSX: Display is wrong when time goes over 24 hours.
-
-# Design Questions
-- I think it's technically wrong to simply merge all tracks and segments?
-  They may exist due to GPS interruptions, device restarts etc.
-  Fixing this would make things a lot more complicated though.
-- Consider using a new type for DGBSStationType (0..=1023) on waypoint. The
-  current design validates when reading a document, but does not validate that
-  it is set to a valid value at runtime. The newtype pattern would require a lot
-  of boilerplate though, and derive_more doesn't really help with a lot of it.
-- Other possible newtypes with the same issues: lat/lon on waypoint and bounds,
-- and degrees on waypoint.magvar.
-
-# Links
-- GPX XSD: https://www.topografix.com/GPX/1/1/gpx.xsd
-- Trackpoint extensions XSD: https://www8.garmin.com/xmlschemas/TrackPointExtensionv1.xsd
+* GaPiX has only been tested on my own GPX files from a Garmin Edge 1040.
+* Conversion of UTC times from GPX files into local times has only been tested
+  by me in the UK. It should work if you cross a timezone boundary or transition
+  from Daylight Saving Time during a ride, but I have no way of testing that.
