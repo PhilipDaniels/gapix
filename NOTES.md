@@ -6,6 +6,8 @@
 - XLSX: Create images to represent the stage profiles.
 - XLSX: Display is wrong when time goes over 24 hours.
 - Fastest KM, 5KM, 10KM
+- Segment detection and storage
+- Fix the location of the round-trip test file - use a Vec<u8>
 
 # Design Questions
 - Consider using a new type for DGBSStationType (0..=1023) on waypoint. The
