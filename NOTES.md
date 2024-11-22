@@ -18,5 +18,6 @@
 - and degrees on waypoint.magvar.
 
 # Links
-- GPX XSD: https://www.topografix.com/GPX/1/1/gpx.xsd
-- Trackpoint extensions XSD: https://www8.garmin.com/xmlschemas/TrackPointExtensionv1.xsd
+- [GPX XSD](https://www.topografix.com/GPX/1/1/gpx.xsd)
+- [Trackpoint extensions XSD](https://www8.garmin.com/xmlschemas/TrackPointExtensionv1.xsd)- []
+- [FIT file SDK](https://developer.garmin.com/fit/overview/)
