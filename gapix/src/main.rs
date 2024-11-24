@@ -8,7 +8,7 @@ use gapix_core::{
     geocoding::{initialise_geocoding, GeocodingOptions},
     gpx_writer::{write_gpx_to_file, OutputOptions},
     model::Gpx,
-    read::read_gpx_from_file,
+    read::{read_fit_from_file, read_gpx_from_file},
     simplification::{metres_to_epsilon, reduce_trackpoints_by_rdp},
     stage::{detect_stages, StageDetectionParameters},
 };
@@ -16,7 +16,7 @@ use join::join_input_files;
 use log::{debug, error, info, logger, warn};
 use logging_timer::time;
 use rayon::prelude::*;
-use std::io::Write;
+use std::{io::Write, path::PathBuf};
 
 mod args;
 mod join;
@@ -42,6 +42,12 @@ fn get_geocoding_options(args: &Args) -> GeocodingOptions {
 
 }
 
+fn read_fits(files: Vec<PathBuf>) {
+    for f in files {
+        let gpx = read_fit_from_file(f).unwrap();
+    }
+}
+
 #[time]
 fn main2() -> Result<()> {
     info!("Starting {PROGRAM_NAME}");
@@ -56,9 +62,12 @@ fn main2() -> Result<()> {
     // input files into RAM and merge them into a single file.
     let input_files = args.files();
     if input_files.is_empty() {
-        warn!("No .gpx files specified, exiting");
+        warn!("No .gpx or .fit files specified, exiting");
         return Ok(());
     }
+
+    read_fits(input_files);
+    std::process::exit(0);
 
     let geo_opt = get_geocoding_options(&args);
     initialise_geocoding(geo_opt);

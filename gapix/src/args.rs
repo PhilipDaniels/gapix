@@ -129,14 +129,14 @@ impl Args {
         let mut files = Vec::new();
 
         for f in &self.files {
-            if Self::is_gpx_file(f) {
+            if Self::is_input_file(f) {
                 if Self::is_output_file(f) {
                     warn!("Excluding {:?} because it is an output file", f);
                 } else {
                     files.push(f.clone());
                 }
             } else {
-                warn!("Excluding {:?} because it does not end in '.gpx'", f);
+                warn!("Excluding {:?} because it does not end in '.gpx' or '.fit'", f);
             }
         }
 
@@ -144,9 +144,9 @@ impl Args {
         files
     }
 
-    fn is_gpx_file(p: &Path) -> bool {
+    fn is_input_file(p: &Path) -> bool {
         p.extension()
-            .is_some_and(|ext| ext.to_ascii_lowercase() == "gpx")
+            .is_some_and(|ext| ext.to_ascii_lowercase() == "gpx" || ext.to_ascii_lowercase() == "fit")
     }
 
     fn is_output_file(p: &Path) -> bool {
