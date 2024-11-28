@@ -5,6 +5,7 @@ use std::{borrow::Cow, path::Path, str::FromStr};
 
 use chrono::{DateTime, Utc};
 use declaration::parse_declaration;
+use fit::read_fit_from_slice;
 use gpx::parse_gpx;
 use log::info;
 use logging_timer::time;
@@ -21,6 +22,7 @@ mod copyright;
 mod declaration;
 mod email;
 mod extensions;
+mod fit;
 mod gpx;
 mod link;
 mod metadata;
@@ -30,6 +32,32 @@ mod track;
 mod track_segment;
 mod trackpoint_extensions;
 mod waypoint;
+
+/// Reads an input file (either FIT or GPX). The file type is determined by
+/// checking the extension: if its "fit" we read it as a FIT file, otherwise we
+/// assume it's a GPX and try and read it as such.
+pub fn read_input_file<P: AsRef<Path>>(input_file: P) -> Result<Gpx, GapixError> {
+    let input_file = input_file.as_ref();
+    match input_file.extension() {
+        Some(ext) => if ext.to_ascii_lowercase() == "fit" {
+            read_fit_from_file(input_file)
+        } else {
+            // Assume gpx.
+            read_gpx_from_file(input_file)
+        }
+        None => read_gpx_from_file(input_file)
+    }
+}
+
+#[time]
+pub fn read_fit_from_file<P: AsRef<Path>>(input_file: P) -> Result<Gpx, GapixError> {
+    let input_file = input_file.as_ref();
+    info!("Reading FIT file {:?}", input_file);
+    let contents = std::fs::read(input_file)?;
+    let mut gpx = read_fit_from_slice(&contents)?;
+    gpx.filename = Some(input_file.to_owned());
+    Ok(gpx)
+}
 
 /// The XSD, which defines the format of a GPX file, is at https://www.topografix.com/GPX/1/1/gpx.xsd
 #[time]

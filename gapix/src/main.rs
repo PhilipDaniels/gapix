@@ -8,7 +8,7 @@ use gapix_core::{
     geocoding::{initialise_geocoding, GeocodingOptions},
     gpx_writer::{write_gpx_to_file, OutputOptions},
     model::Gpx,
-    read::{read_fit_from_file, read_gpx_from_file},
+    read::read_input_file,
     simplification::{metres_to_epsilon, reduce_trackpoints_by_rdp},
     stage::{detect_stages, StageDetectionParameters},
 };
@@ -16,7 +16,8 @@ use join::join_input_files;
 use log::{debug, error, info, logger, warn};
 use logging_timer::time;
 use rayon::prelude::*;
-use std::{io::Write, path::PathBuf};
+
+use std::io::Write;
 
 mod args;
 mod join;
@@ -30,22 +31,6 @@ fn main() -> Result<()> {
     main2()?;
     logger().flush();
     Ok(())
-}
-
-fn get_geocoding_options(args: &Args) -> GeocodingOptions {
-    let project_dirs = ProjectDirs::from("", "", env!("CARGO_PKG_NAME"));
-    GeocodingOptions::new(
-        project_dirs.map(|d| d.config_local_dir().to_path_buf()),
-        args.countries.clone(),
-        args.force_geonames_download
-    )
-
-}
-
-fn read_fits(files: Vec<PathBuf>) {
-    for f in files {
-        let gpx = read_fit_from_file(f).unwrap();
-    }
 }
 
 #[time]
@@ -65,9 +50,6 @@ fn main2() -> Result<()> {
         warn!("No .gpx or .fit files specified, exiting");
         return Ok(());
     }
-
-    read_fits(input_files);
-    std::process::exit(0);
 
     let geo_opt = get_geocoding_options(&args);
     initialise_geocoding(geo_opt);
@@ -96,7 +78,7 @@ fn main2() -> Result<()> {
         let rof = get_required_outputs(&args, f);
         debug!("Required Output Files: {:?}", &rof);
 
-        if let Err(err) = read_gpx_from_file(f).map(|gpx| {
+        if let Err(err) = read_input_file(f).map(|gpx| {
             let gpx = gpx.into_single_track();
             analyse_gpx(&gpx, &args, &rof).map(|_| simplify_gpx(gpx, &args, rof))
         }) {
@@ -158,6 +140,16 @@ fn simplify_gpx(mut gpx: Gpx, args: &Args, rof: RequiredOutputFiles) -> Result<(
     }
 
     Ok(())
+}
+
+fn get_geocoding_options(args: &Args) -> GeocodingOptions {
+    let project_dirs = ProjectDirs::from("", "", env!("CARGO_PKG_NAME"));
+    GeocodingOptions::new(
+        project_dirs.map(|d| d.config_local_dir().to_path_buf()),
+        args.countries.clone(),
+        args.force_geonames_download
+    )
+
 }
 
 fn configure_logging() {

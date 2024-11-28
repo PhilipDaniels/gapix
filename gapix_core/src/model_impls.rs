@@ -4,10 +4,13 @@ use log::debug;
 use logging_timer::time;
 
 use crate::{
-    error::GapixError, geocoding::RTreePoint, model::{
+    error::GapixError,
+    geocoding::RTreePoint,
+    model::{
         Bounds, Email, EnrichedGpx, EnrichedTrackPoint, Extensions, FixType, Gpx, Link, Metadata,
         Waypoint, XmlDeclaration,
-    }, stage::{distance_between_points_metres, speed_kmh_from_duration}
+    },
+    stage::{distance_between_points_metres, speed_kmh_from_duration},
 };
 
 /// Checks to see whether a valid is in the valid range for a degrees value
@@ -66,7 +69,7 @@ impl Gpx {
         Self {
             declaration,
             filename: Default::default(),
-            version: Default::default(),
+            version: "1.1".to_string(),
             creator: Default::default(),
             attributes: Default::default(),
             metadata,
@@ -75,6 +78,33 @@ impl Gpx {
             tracks: Default::default(),
             extensions: Default::default(),
         }
+    }
+
+    pub fn set_default_garmin_attributes(&mut self) {
+        self.attributes.insert(
+            "xsi:schemaLocation".to_string(),
+            "http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/11.xsd".to_string(),
+        );
+
+        self.attributes.insert(
+            "xmlns:ns3".to_string(),
+            "http://www.garmin.com/xmlschemas/TrackPointExtension/v1".to_string(),
+        );
+
+        self.attributes.insert(
+            "xmlns".to_string(),
+            "http://www.topografix.com/GPX/1/1".to_string(),
+        );
+
+        self.attributes.insert(
+            "xmlns:xsi".to_string(),
+            "http://www.w3.org/2001/XMLSchema-instance".to_string(),
+        );
+
+        self.attributes.insert(
+            "xmlns:ns2".to_string(),
+            "http://www.garmin.com/xmlschemas/GpxExtensions/v3".to_string(),
+        );
     }
 
     /// Returns the total number of points across all tracks and segments.

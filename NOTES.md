@@ -1,12 +1,12 @@
 # TODO
-- FIT file parsing
+- FIT parsing: do we need to worry about unit conversion?
 - Move model into its own crate.
 - Track splitting. Put file-level waypoints on the nearest split track.
 - Waypoint processing for warnings etc.
 - XLSX: Create images to represent the stage profiles.
 - XLSX: Display is wrong when time goes over 24 hours.
 - Fastest KM, 5KM, 10KM
-- Segment detection and storage
+- Segment detection and storage: SQLite?
 - Fix the location of the round-trip test file - use a Vec<u8>
 
 # Design Questions

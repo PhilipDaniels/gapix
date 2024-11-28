@@ -15,6 +15,8 @@ pub enum GapixError {
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Xlsx(#[from] rust_xlsxwriter::XlsxError),
+    #[error(transparent)]
+    FitParseError(#[from] fitparser::Error),
 
     #[error("Mandatory attribute {0} was not found on the element")]
     MandatoryAttributeNotFound(String),
@@ -59,6 +61,8 @@ pub enum GapixError {
     InvalidLongitude(f64),
     #[error("Invalid degrees of {0}. Valid range is 0.0..=360")]
     InvalidDegrees(f64),
+    #[error("Field named '{0}' not found in FIT data record")]
+    FieldNotFound(String),
 }
 
 impl From<AttrError> for GapixError {
