@@ -8,8 +8,9 @@ written to new files, and by default GaPiX does not overwrite output files that
 already exist, but this can be overridden with the `--force` flag. You can get a
 list of all the options and their default values by running `gapix --help`.
 
-GaPiX currently only reads `.gpx` files, but I intend to extend it to also
-accept FIT files.
+As well as `.gpx` files GaPiX can also read `.fit` files which record
+[Activities](https://developer.garmin.com/fit/file-types/activity/)
+i.e. rides. 
 
 # Joining GPX Files
 Sometimes a ride might get split up by your device into multiple tracks due to
@@ -157,7 +158,7 @@ bit confusing if you ask it to process many files at once.
 # Installation
 GaPiX is written in Rust. The EXE is self contained. There is a release on
 Github which contains files for Windows and Linux. Or build from source using
-[cargo](https://doc.rust-lang.org/cargo)
+[cargo](https://doc.rust-lang.org/cargo):
 
 ```shell
 git clone https://github.com/PhilipDaniels/gapix
@@ -168,7 +169,8 @@ cargo install --locked --path .
 If you don't have Rust, you can install it from [rustup](https://rustup.rs/).
 
 # Caveats
-* GaPiX has only been tested on my own GPX files from a Garmin Edge 1040.
+* GaPiX has only been tested on my own GPX and FIT files from a Garmin Edge
+  1040.
 * GPX files always store times in UTC. Conversion into local times has only been
   tested by me in the UK. It *should* work if you cross a timezone boundary or
   transition from Daylight Saving Time during a ride, but I have no way of
