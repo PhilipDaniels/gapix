@@ -692,7 +692,7 @@ dependencies = [
 
 [[package]]
 name = "gapix"
-version = "2.0.0"
+version = "3.0.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -707,7 +707,7 @@ dependencies = [
 
 [[package]]
 name = "gapix_core"
-version = "2.0.0"
+version = "3.0.0"
 dependencies = [
  "chrono",
  "chrono-tz",
