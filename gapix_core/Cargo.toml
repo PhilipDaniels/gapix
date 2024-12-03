@@ -19,4 +19,4 @@ rstar = "0.12.2"
 rust_xlsxwriter = "0.75"
 thiserror = { workspace = true }
 tzf-rs = "0.4.9"
-zip = "2.2.0"
+zip = "2.2.1"
