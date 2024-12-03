@@ -159,6 +159,9 @@ impl Gpx {
 
         self.tracks.truncate(1);
         self.tracks.shrink_to_fit();
+        self.tracks[0].segments.truncate(1);
+        self.tracks[0].segments.shrink_to_fit();
+        self.tracks[0].segments[0].points = points;
 
         debug!(
             "Merged {} tracks with {} segments and {} points into a single track",

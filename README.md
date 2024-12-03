@@ -161,8 +161,8 @@ Github which contains files for Windows and Linux. Or build from source using
 
 ```shell
 git clone https://github.com/PhilipDaniels/gapix
-cd gapix
-cargo install --path .
+cd gapix/gapix
+cargo install --locked --path .
 ```
 
 If you don't have Rust, you can install it from [rustup](https://rustup.rs/).

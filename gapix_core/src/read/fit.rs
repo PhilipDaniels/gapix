@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use fitparser::{profile::MesgNum, FitDataField, FitDataRecord, Value};
-use log::error;
+use log::{error, info, warn};
 
 use crate::{
     error::GapixError,
@@ -16,7 +16,9 @@ pub fn read_fit_from_slice(data: &[u8]) -> Result<Gpx, GapixError> {
     gpx.metadata.description = Some("Parsed from a FIT file".to_string());
     gpx.metadata.time = None;
 
-    let mut num_activity_records = 0;
+    let mut num_activity_messages = 0;
+    let mut num_session_messages = 0;
+    let mut num_record_messages = 0;
     gpx.tracks.clear();
 
     let fit_data = fitparser::from_bytes(data)?;
@@ -37,33 +39,36 @@ pub fn read_fit_from_slice(data: &[u8]) -> Result<Gpx, GapixError> {
             }
 
             MesgNum::Activity => {
-                num_activity_records += 1;
+                num_activity_messages += 1;
             }
-
-            // We map sessions to tracks.
+           
             MesgNum::Session => {
-                parse_session_data(&d, &mut gpx)?;
+                num_session_messages += 1;
+                parse_session_message(&d, &mut gpx)?;
             }
 
             MesgNum::Record => {
-                let _error_already_logged = parse_record_data(&d, &mut gpx);
+                num_record_messages += 1;
+                let _error_already_logged = parse_record_message(&d, &mut gpx);
             }
             _ => {}
         }
     }
 
-    if num_activity_records != 1 {
-        error!("FIT file contains {num_activity_records} Activity Records, expected 1");
-        return Err(GapixError::MultipleTracksFound);
+    if num_activity_messages != 1 {
+        warn!("FIT file contains {num_activity_messages} Activity Messages, expected 1");
     }
 
+    info!("Parsed FIT file contained {num_session_messages} Session Messages and {num_record_messages} Record Messages");
     Ok(gpx)
 }
 
 /// Parses a Record. Note that, arbitrarily, certain fields can be missing. If
 /// we don't get enough to form a valid waypoint, ignore it and carry on processing.
 /// There tend to be a lot of these, so don't log anything.
-fn parse_record_data(data: &FitDataRecord, gpx: &mut Gpx) -> Result<(), GapixError> {
+fn parse_record_message(data: &FitDataRecord, gpx: &mut Gpx) -> Result<(), GapixError> {
+    ensure_default_track(gpx);
+
     // Interesting fields: position_lat/long, heart_rate(EXT), distance, temperature (EXT), enhanced_speed,
     // enhanced_altitude, enhanced_respiration_rate, timestamp (UTC),
     //debug!("{:?}", data);
@@ -110,7 +115,8 @@ fn parse_record_data(data: &FitDataRecord, gpx: &mut Gpx) -> Result<(), GapixErr
     Ok(())
 }
 
-fn parse_session_data(data: &FitDataRecord, gpx: &mut Gpx) -> Result<(), GapixError> {
+/// We map sessions to tracks.
+fn parse_session_message(data: &FitDataRecord, gpx: &mut Gpx) -> Result<(), GapixError> {
     let mut track = Track::default();
     track.name = Some(format!("Track {}", gpx.tracks.len() + 1));
 
@@ -126,6 +132,27 @@ fn parse_session_data(data: &FitDataRecord, gpx: &mut Gpx) -> Result<(), GapixEr
     track.segments.push(TrackSegment::default());
     gpx.tracks.push(track);
     Ok(())
+}
+
+/// My reading of the FIT spec says that a Session Message should precede 1 or
+/// more Record Messages. However, sometimes it seems to come AFTER the Record
+/// Messages. This causes a problem because we attach the Records as points onto
+/// track segments whose creation is triggered by the parsing of a Session
+/// Message. If the order is wrong, rather than complain make a default track in
+/// the GPX to which we can attach the points. If the Session Message does show
+/// up at the end this will mean that the parsed GPX structure will end up with
+/// 1 extra, empty track. This is not really a problem, it will probably get
+/// eliminated by into_single_track() anyway.
+fn ensure_default_track(gpx: &mut Gpx) {
+    if !gpx.tracks.is_empty() {
+        return;
+    }
+
+    let mut track = Track::default();
+    track.name = Some("Track 0".to_string());
+    track.segments.push(TrackSegment::default());
+    track.r#type = Some("unknown".to_string());
+    gpx.tracks.push(track);
 }
 
 fn get_field<'a>(fields: &'a [FitDataField], name: &str) -> Option<&'a FitDataField> {
