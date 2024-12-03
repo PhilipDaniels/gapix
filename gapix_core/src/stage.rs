@@ -7,7 +7,7 @@ use core::{fmt, slice};
 use std::{collections::HashSet, ops::Index};
 
 use chrono::{DateTime, TimeDelta, Utc};
-use geo::{GeodesicDistance, Point};
+use geo::{Distance, Geodesic, Point};
 use log::{debug, info, warn};
 use logging_timer::time;
 use rayon::prelude::*;
@@ -131,6 +131,7 @@ impl Stage {
     /// Reverse geocodes the stage, i.e. looks up the place name from
     /// the (lat,lon) coordinates and returns it. For a Control stage, this
     /// is just "Name", for a Moving stage, returns "Name1 to Name2".
+    #[time]
     pub fn reverse_geocode(&self) -> Option<String> {
         let start_desc = reverse_geocode_latlon(self.start.as_rtree_point());
 
@@ -963,7 +964,7 @@ fn find_air_temps(
 
 /// Calculate distance between two points in metres.
 pub fn distance_between_points_metres(p1: Point, p2: Point) -> f64 {
-    p1.geodesic_distance(&p2)
+    Geodesic::distance(p1, p2)
 }
 
 /// Try and figure out whether we are starting Moving or Stopped

@@ -7,7 +7,7 @@ use std::{
 };
 
 use chrono_tz::Tz;
-use geo::{point, GeodesicDistance};
+use geo::{point, Distance, Geodesic};
 use log::{debug, error, info, warn};
 use logging_timer::{stime, time};
 use rstar::{PointDistance, RTree, RTreeObject, AABB};
@@ -93,7 +93,6 @@ pub fn initialise_geocoding(mut options: GeocodingOptions) {
 }
 
 /// Given a (lat, lon) finds the nearest place and returns a description of it.
-#[time]
 pub fn reverse_geocode_latlon(point: RTreePoint) -> Option<String> {
     let place = PLACES.nearest_neighbor(&point)?;
 
@@ -251,7 +250,7 @@ impl PointDistance for Place {
     ) -> <<Self::Envelope as rstar::Envelope>::Point as rstar::Point>::Scalar {
         let p1 = rtree_point_to_geo_point(point);
         let p2 = rtree_point_to_geo_point(&self.as_rtree_point());
-        p1.geodesic_distance(&p2)
+        Geodesic::distance(p1, p2)
     }
 }
 
