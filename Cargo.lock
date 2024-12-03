@@ -722,7 +722,7 @@ dependencies = [
  "reqwest",
  "rstar",
  "rust_xlsxwriter",
- "thiserror 1.0.64",
+ "thiserror 2.0.4",
  "tzf-rs",
  "zip",
 ]
