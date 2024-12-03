@@ -117,8 +117,10 @@ fn parse_record_message(data: &FitDataRecord, gpx: &mut Gpx) -> Result<(), Gapix
 
 /// We map sessions to tracks.
 fn parse_session_message(data: &FitDataRecord, gpx: &mut Gpx) -> Result<(), GapixError> {
-    let mut track = Track::default();
-    track.name = Some(format!("Track {}", gpx.tracks.len() + 1));
+    let mut track = Track {
+        name: Some(format!("Track {}", gpx.tracks.len() + 1)),
+        ..Default::default()
+    };
 
     let sport = get_field_string(data.fields(), "sport");
     let sub_sport = get_field_string(data.fields(), "sub_sport");
@@ -148,8 +150,10 @@ fn ensure_default_track(gpx: &mut Gpx) {
         return;
     }
 
-    let mut track = Track::default();
-    track.name = Some("Track 0".to_string());
+    let mut track = Track {
+        name: Some("Track 0".to_string()),
+        ..Default::default()
+    };
     track.segments.push(TrackSegment::default());
     track.r#type = Some("unknown".to_string());
     gpx.tracks.push(track);
@@ -171,19 +175,19 @@ fn get_field_string<'a>(fields: &'a [FitDataField], name: &str) -> Result<&'a St
     if let Value::String(val) = value {
         Ok(val)
     } else {
-        return Err(GapixError::NumericConversionError(format!("get_field_string: Field value is of wrong type {}", value)))
+        Err(GapixError::NumericConversionError(format!("get_field_string: Field value is of wrong type {}", value)))
     }
 }
 
-fn get_field_timestamp<'a>(
-    fields: &'a [FitDataField],
+fn get_field_timestamp(
+    fields: &[FitDataField],
     name: &str,
 ) -> Result<DateTime<Utc>, GapixError> {
     let value = get_field_value(fields, name)?;
     if let Value::Timestamp(val) = value {
         Ok(val.to_utc())
     } else {
-        return Err(GapixError::NumericConversionError(format!("get_field_timestamp: Field value is of wrong type {}", value)))
+        Err(GapixError::NumericConversionError(format!("get_field_timestamp: Field value is of wrong type {}", value)))
     }
 }
 
@@ -208,7 +212,7 @@ fn get_field_f64(fields: &[FitDataField], name: &str) -> Result<f64, GapixError>
             if *v == v_try as i64 {
                 Ok(v_try)
             } else {
-                return Err(GapixError::NumericConversionError(format!("Cannot accurately convert {} to f64", *v)))
+                Err(GapixError::NumericConversionError(format!("Cannot accurately convert {} to f64", *v)))
             }
         }
         Value::UInt64(v) => {
@@ -216,7 +220,7 @@ fn get_field_f64(fields: &[FitDataField], name: &str) -> Result<f64, GapixError>
             if *v == v_try as u64 {
                 Ok(v_try)
             } else {
-                return Err(GapixError::NumericConversionError(format!("Cannot accurately convert {} to f64", *v)))
+                Err(GapixError::NumericConversionError(format!("Cannot accurately convert {} to f64", *v)))
             }
         }
         Value::UInt64z(v) => {
@@ -224,10 +228,10 @@ fn get_field_f64(fields: &[FitDataField], name: &str) -> Result<f64, GapixError>
             if *v == v_try as u64 {
                 Ok(v_try)
             } else {
-                return Err(GapixError::NumericConversionError(format!("Cannot accurately convert {} to f64", *v)))
+                Err(GapixError::NumericConversionError(format!("Cannot accurately convert {} to f64", *v)))
             }
         }
-        _ => return Err(GapixError::NumericConversionError(format!("get_field_f64: Field value is of wrong type {}", value)))
+        _ => Err(GapixError::NumericConversionError(format!("get_field_f64: Field value is of wrong type {}", value)))
     }
 }
 
