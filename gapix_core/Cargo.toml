@@ -16,7 +16,7 @@ quick-xml = { version = "0.37" }
 rayon = { workspace = true }
 reqwest = { version = "0.12", features = ["blocking"] }
 rstar = "0.12.2"
-rust_xlsxwriter = "0.75"
+rust_xlsxwriter = "0.79.4"
 thiserror = { workspace = true }
 tzf-rs = "0.4.9"
 zip = "2.2.1"
