@@ -7,7 +7,7 @@ use crate::{error::GapixError, model::Metadata};
 
 use super::{
     attributes::Attributes, bounds::parse_bounds, copyright::parse_copyright,
-    extensions::parse_extensions, link::parse_link, person::parse_person, XmlReaderExtensions,
+    extensions::parse_extensions, link::parse_link, person::parse_person, xml_reader_extensions::XmlReaderExtensions,
 };
 
 pub(crate) fn parse_metadata(
@@ -89,8 +89,9 @@ pub(crate) fn parse_metadata(
 
 #[cfg(test)]
 mod tests {
+    use crate::read::xml_reader_extensions::start_parse;
+
     use super::*;
-    use crate::read::start_parse;
     use chrono::DateTime;
     use quick_xml::Reader;
 

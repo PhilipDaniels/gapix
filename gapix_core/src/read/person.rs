@@ -5,7 +5,7 @@ use quick_xml::{
 
 use crate::{error::GapixError, model::Person};
 
-use super::{attributes::Attributes, email::parse_email, link::parse_link, XmlReaderExtensions};
+use super::{attributes::Attributes, email::parse_email, link::parse_link, xml_reader_extensions::XmlReaderExtensions};
 
 pub(crate) fn parse_person(
     start_element: &BytesStart<'_>,
@@ -58,8 +58,9 @@ pub(crate) fn parse_person(
 
 #[cfg(test)]
 mod tests {
+    use crate::read::xml_reader_extensions::start_parse;
+
     use super::*;
-    use crate::read::start_parse;
     use quick_xml::Reader;
 
     #[test]

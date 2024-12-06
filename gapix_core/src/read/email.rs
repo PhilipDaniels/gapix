@@ -2,7 +2,7 @@ use quick_xml::events::BytesStart;
 
 use crate::{error::GapixError, model::Email};
 
-use super::{attributes::Attributes, XmlReaderConversions};
+use super::{attributes::Attributes, xml_reader_extensions::XmlReaderConversions};
 
 /// Parses an element of the form: <email id="phil" domain="gmail.com">
 pub(crate) fn parse_email<C: XmlReaderConversions>(
@@ -18,8 +18,9 @@ pub(crate) fn parse_email<C: XmlReaderConversions>(
 
 #[cfg(test)]
 mod tests {
+    use crate::read::xml_reader_extensions::start_parse;
+
     use super::*;
-    use crate::read::start_parse;
     use quick_xml::Reader;
 
     #[test]

@@ -47,8 +47,9 @@ pub(crate) fn parse_track_segment(
 
 #[cfg(test)]
 mod tests {
+    use crate::read::xml_reader_extensions::start_parse;
+
     use super::*;
-    use crate::read::start_parse;
     use quick_xml::Reader;
 
     #[test]

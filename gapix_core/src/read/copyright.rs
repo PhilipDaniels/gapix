@@ -5,7 +5,7 @@ use quick_xml::{
 
 use crate::{error::GapixError, model::Copyright};
 
-use super::{attributes::Attributes, XmlReaderExtensions};
+use super::{attributes::Attributes, xml_reader_extensions::XmlReaderExtensions};
 
 pub(crate) fn parse_copyright(
     start_element: &BytesStart<'_>,
@@ -54,8 +54,9 @@ pub(crate) fn parse_copyright(
 
 #[cfg(test)]
 mod tests {
+    use crate::read::xml_reader_extensions::start_parse;
+
     use super::*;
-    use crate::read::start_parse;
     use quick_xml::Reader;
 
     #[test]

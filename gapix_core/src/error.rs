@@ -2,8 +2,7 @@ use std::{num::TryFromIntError, path::PathBuf};
 
 use quick_xml::events::attributes::AttrError;
 use thiserror::Error;
-
-use crate::read::XmlReaderConversions;
+use crate::read::xml_reader_extensions::XmlReaderConversions;
 
 #[derive(Debug, Error)]
 pub enum GapixError {

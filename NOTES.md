@@ -8,6 +8,7 @@
 - Fastest KM, 5KM, 10KM
 - Segment detection and storage: SQLite?
 - Fix the location of the round-trip test file - use a Vec<u8>
+- Geocoding point types
 
 # Design Questions
 - Consider using a new type for DGBSStationType (0..=1023) on waypoint. The
@@ -16,6 +17,9 @@
   of boilerplate though, and derive_more doesn't really help with a lot of it.
 - Other possible newtypes with the same issues: lat/lon on waypoint and bounds,
 - and degrees on waypoint.magvar.
+
+# Performance Database
+
 
 # Links
 - [GPX XSD](https://www.topografix.com/GPX/1/1/gpx.xsd)

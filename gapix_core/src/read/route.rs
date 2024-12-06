@@ -7,7 +7,7 @@ use crate::{error::GapixError, model::Route};
 
 use super::{
     attributes::Attributes, extensions::parse_extensions, link::parse_link,
-    waypoint::parse_waypoint, XmlReaderExtensions,
+    waypoint::parse_waypoint, xml_reader_extensions::XmlReaderExtensions,
 };
 
 pub(crate) fn parse_route(
@@ -81,8 +81,9 @@ pub(crate) fn parse_route(
 
 #[cfg(test)]
 mod tests {
+    use crate::read::xml_reader_extensions::start_parse;
+
     use super::*;
-    use crate::read::start_parse;
     use quick_xml::Reader;
 
     #[test]

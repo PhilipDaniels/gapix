@@ -2,7 +2,7 @@ use quick_xml::{events::Event, Reader};
 
 use crate::{error::GapixError, model::GarminTrackpointExtensions};
 
-use super::XmlReaderExtensions;
+use super::xml_reader_extensions::XmlReaderExtensions;
 
 /// This function is a little different to the other parse() functions - it expects
 /// to be fed the inner Xml from an &lt;extensions&gt; tag, so it won't find the usual

@@ -7,7 +7,7 @@ use crate::{error::GapixError, model::Track};
 
 use super::{
     attributes::Attributes, extensions::parse_extensions, link::parse_link,
-    track_segment::parse_track_segment, XmlReaderExtensions,
+    track_segment::parse_track_segment, xml_reader_extensions::XmlReaderExtensions,
 };
 
 pub(crate) fn parse_track(
@@ -82,8 +82,9 @@ pub(crate) fn parse_track(
 
 #[cfg(test)]
 mod tests {
+    use crate::read::xml_reader_extensions::start_parse;
+
     use super::*;
-    use crate::read::start_parse;
     use quick_xml::Reader;
 
     #[test]

@@ -5,7 +5,7 @@ use quick_xml::{
 
 use crate::{error::GapixError, model::Link};
 
-use super::{attributes::Attributes, XmlReaderExtensions};
+use super::{attributes::Attributes, xml_reader_extensions::XmlReaderExtensions};
 
 pub(crate) fn parse_link(
     start_element: &BytesStart<'_>,
@@ -49,8 +49,9 @@ pub(crate) fn parse_link(
 
 #[cfg(test)]
 mod tests {
+    use crate::read::xml_reader_extensions::start_parse;
+
     use super::*;
-    use crate::read::start_parse;
     use quick_xml::Reader;
 
     #[test]

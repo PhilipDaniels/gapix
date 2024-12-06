@@ -1,3 +1,5 @@
+use std::io::Read;
+
 use chrono::{DateTime, Utc};
 use fitparser::{profile::MesgNum, FitDataField, FitDataRecord, Value};
 use log::{error, info, warn};
@@ -7,7 +9,7 @@ use crate::{
     model::{GarminTrackpointExtensions, Gpx, Metadata, Track, TrackSegment, Waypoint, XmlDeclaration},
 };
 
-pub fn read_fit_from_slice(data: &[u8]) -> Result<Gpx, GapixError> {
+pub(crate) fn read_fit_from_reader_inner<R: Read>(mut reader: R) -> Result<Gpx, GapixError> {
     let declaration = XmlDeclaration::default();
     let metadata = Metadata::default();
     let mut gpx = Gpx::new(declaration, metadata);
@@ -21,7 +23,7 @@ pub fn read_fit_from_slice(data: &[u8]) -> Result<Gpx, GapixError> {
     let mut num_record_messages = 0;
     gpx.tracks.clear();
 
-    let fit_data = fitparser::from_bytes(data)?;
+    let fit_data = fitparser::from_reader(&mut reader)?;
     for d in fit_data {
         match d.kind() {
             // See https://developer.garmin.com/fit/file-types/activity/

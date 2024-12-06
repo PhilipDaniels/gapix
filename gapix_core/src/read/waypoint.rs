@@ -11,7 +11,7 @@ use crate::{
 
 use super::{
     attributes::Attributes, extensions::parse_extensions, link::parse_link,
-    trackpoint_extensions::parse_garmin_trackpoint_extensions, XmlReaderExtensions,
+    trackpoint_extensions::parse_garmin_trackpoint_extensions, xml_reader_extensions::XmlReaderExtensions,
 };
 
 /// Parses a waypoint. Waypoints can appear under the 'gpx' tag, as part of a
@@ -141,7 +141,7 @@ pub(crate) fn parse_waypoint(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{model::FixType, read::start_parse};
+    use crate::{model::FixType, read::xml_reader_extensions::start_parse};
     use quick_xml::Reader;
 
     #[test]

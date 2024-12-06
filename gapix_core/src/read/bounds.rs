@@ -2,7 +2,7 @@ use quick_xml::events::BytesStart;
 
 use crate::{error::GapixError, model::Bounds};
 
-use super::{attributes::Attributes, XmlReaderConversions};
+use super::{attributes::Attributes, xml_reader_extensions::XmlReaderConversions};
 
 pub(crate) fn parse_bounds<C: XmlReaderConversions>(
     start_element: &BytesStart<'_>,
@@ -21,8 +21,9 @@ pub(crate) fn parse_bounds<C: XmlReaderConversions>(
 
 #[cfg(test)]
 mod tests {
+    use crate::read::xml_reader_extensions::start_parse;
+
     use super::*;
-    use crate::read::start_parse;
     use quick_xml::Reader;
 
     #[test]

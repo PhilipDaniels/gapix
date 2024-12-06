@@ -2,7 +2,7 @@ use quick_xml::events::BytesDecl;
 
 use crate::{error::GapixError, model::XmlDeclaration};
 
-use super::XmlReaderConversions;
+use super::xml_reader_extensions::XmlReaderConversions;
 
 /// Parses an XML declaration, i.e. the very first line of the file which is:
 ///     <?xml version="1.0" encoding="UTF-8"?>
