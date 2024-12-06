@@ -447,12 +447,13 @@ mod tests {
         let gpx1 = make_fully_populated_gpx();
         let mut buffer = Vec::new();
         write_gpx_to_writer(&mut buffer, &gpx1, OutputOptions::Full).unwrap();
-        write_gpx_to_file(
-            "/home/phil/repos/mine/gapix/target/release/round_trip.gpx",
-            &gpx1,
-            OutputOptions::Full,
-        )
-        .unwrap();
+
+        // write_gpx_to_file(
+        //     "/home/phil/repos/mine/gapix/target/release/round_trip.gpx",
+        //     &gpx1,
+        //     OutputOptions::Full,
+        // )
+        // .unwrap();
 
         let gpx2 = read_gpx_from_slice(&buffer).unwrap();
 

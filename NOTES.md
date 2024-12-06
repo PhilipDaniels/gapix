@@ -7,7 +7,6 @@
 - XLSX: Display is wrong when time goes over 24 hours.
 - Fastest KM, 5KM, 10KM
 - Segment detection and storage: SQLite?
-- Fix the location of the round-trip test file - use a Vec<u8>
 - Geocoding point types
 
 # Design Questions
