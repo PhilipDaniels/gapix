@@ -7,7 +7,6 @@
 - XLSX: Display is wrong when time goes over 24 hours.
 - Fastest KM, 5KM, 10KM
 - Segment detection and storage: SQLite?
-- Geocoding point types
 
 # Design Questions
 - Consider using a new type for DGBSStationType (0..=1023) on waypoint. The

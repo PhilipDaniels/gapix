@@ -423,7 +423,7 @@ fn load_places() -> RTree<Place> {
     let mut places = Vec::with_capacity(2048);
 
     for iso_code in &options.countries {
-        load_place(&mut places, options, iso_code);
+        load_places_for_country(&mut places, options, iso_code);
     }
 
     let tree = RTree::bulk_load(places);
@@ -438,7 +438,7 @@ fn load_places() -> RTree<Place> {
 }
 
 #[stime]
-fn load_place(places: &mut Vec<Place>, options: &GeocodingOptions, iso_code: &str) {
+fn load_places_for_country(places: &mut Vec<Place>, options: &GeocodingOptions, iso_code: &str) {
     let src_filename = format!("{}.zip", iso_code);
 
     let rdr = match download_file_and_open(options, &src_filename) {
@@ -481,13 +481,13 @@ fn load_place(places: &mut Vec<Place>, options: &GeocodingOptions, iso_code: &st
             // A = country, state, region
             // H = stream, lake
             // L = parks, area
-            // R = road, railrod
+            // R = road, railroad
             // P = city, village
             // S = spot, building, farm
             // T = mountain, hill, rock
             // U = undersea
             // V = forest, heath
-            if fc != "P" {
+            if !["P", "T"].contains(&fc) {
                 continue;
             }
 

@@ -131,7 +131,6 @@ impl Stage {
     /// Reverse geocodes the stage, i.e. looks up the place name from
     /// the (lat,lon) coordinates and returns it. For a Control stage, this
     /// is just "Name", for a Moving stage, returns "Name1 to Name2".
-    #[time]
     pub fn reverse_geocode(&self) -> Option<String> {
         let start_desc = reverse_geocode_latlon(self.start.as_rtree_point());
 
