@@ -51,7 +51,6 @@
 
 ## The Database
 - https://www.reddit.com/r/rust/comments/1e8ld5d/my_take_on_databases_with_rust_seaorm_vs_diesel/
-- A separate EXE: ridedb
 - Put SQLLite db in known dir. Ability to use a "development" db.
 - Configuration table instead of command line parameters
 - Store entire GPX or FIT file in the db
@@ -87,8 +86,7 @@
 
 
 ## Plan
-- Basic tokio+axum website on a random port
-- Open the webpage automatically
 - Get tracing and logging working into RAM
 - Create a database using SeaORM
 - Serve the tailwind and htmx assets
+- Shutdown axum when the window is closed: https://github.com/tokio-rs/axum/discussions/1500

@@ -1,0 +1,16 @@
+[package]
+name = "gapixweb"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = { workspace = true }
+# axum = "=0.8.0-alpha.1"   # Breaks maud integration
+axum = "0.7"
+directories = "5.0.1"
+gapix_core = { path = "../gapix_core" }
+maud = { version = "0.26.0", features = ["axum"] }
+opener = "0.7.2"
+tokio = { version = "1.42", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
