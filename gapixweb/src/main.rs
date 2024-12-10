@@ -5,7 +5,7 @@ use axum::{
     routing::get,
     Router,
 };
-use database::database_path;
+use database::make_connection;
 use index::index;
 
 mod asset;
@@ -17,9 +17,9 @@ mod tags;
 async fn main() -> anyhow::Result<()> {
     configure_tracing();
 
-    let db_path = database_path()?;
-    println!("db_path = {db_path:?}");
-
+    let conn = make_connection().await?;
+    assert!(conn.ping().await.is_ok());
+    
     let app = Router::new()
         .route("/", get(index))
         .route("/assets/*file", get(static_handler));
