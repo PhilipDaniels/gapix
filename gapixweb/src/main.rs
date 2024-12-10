@@ -1,12 +1,10 @@
 use std::{thread, time::Duration};
 
 use asset::static_handler;
-use axum::{
-    routing::get,
-    Router,
-};
+use axum::{routing::get, Router};
 use database::make_connection;
 use index::index;
+use tracing::info;
 
 mod asset;
 mod database;
@@ -19,7 +17,7 @@ async fn main() -> anyhow::Result<()> {
 
     let conn = make_connection().await?;
     assert!(conn.ping().await.is_ok());
-    
+
     let app = Router::new()
         .route("/", get(index))
         .route("/assets/*file", get(static_handler));
@@ -31,7 +29,7 @@ async fn main() -> anyhow::Result<()> {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await?;
     let addr = listener.local_addr()?;
     let url = format!("http://localhost:{}", addr.port());
-    println!("Listening on {url}");
+    info!("Listening on {url}");
     thread::spawn(|| {
         thread::sleep(Duration::from_secs_f32(0.5));
         // Ignore any errors, this is a "nice-to-have" anyway.
@@ -47,5 +45,9 @@ async fn main() -> anyhow::Result<()> {
 }
 
 fn configure_tracing() {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_line_number(true)
+        .with_max_level(tracing::Level::TRACE)
+        .with_test_writer()
+        .init();
 }
