@@ -5,15 +5,20 @@ use axum::{
     routing::get,
     Router,
 };
+use database::database_path;
 use index::index;
 
 mod asset;
+mod database;
 mod index;
 mod tags;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     configure_tracing();
+
+    let db_path = database_path()?;
+    println!("db_path = {db_path:?}");
 
     let app = Router::new()
         .route("/", get(index))

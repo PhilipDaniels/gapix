@@ -74,14 +74,11 @@
 
 ## Features
 - Copy the database to a backup upon close
-- Serve everything from a self-contained EXE.
-- Automatically open ridden.html in the web browser.
 - CVE: Cardiovascular efficiency, being beats per kmh with climb compensation
 - Fastest KM, 5KM, 10KM
 - Replay and "race" multiple replays at once
 - Trend analysis
 - Download as spreadsheet
-- Favicon
 
 
 ## Plan
@@ -89,3 +86,4 @@
 - Create a database using SeaORM
 - Serve the tailwind and htmx assets
 - Shutdown axum when the window is closed: https://github.com/tokio-rs/axum/discussions/1500
+- Favicon
