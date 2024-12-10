@@ -32,7 +32,6 @@
 - https://maud.lambda.xyz/
 - https://htmx.org/
 - https://tailwindcss.com/
-- https://crates.io/crates/opener (open the URL automatically)
 
 ## Examples
 - Example FIT app: https://github.com/karaul/fitplotter  
@@ -40,7 +39,6 @@
   This looks very good, the templates are simple.
   It is server-side rendered.
   You can see how htmx calls a handler easily.
-  Hardcoded CDN for htmx.js and tailwind.css.
 - Example Svelte app: https://github.com/svelterust/todo/tree/master
 - https://rust-api.dev/docs/front-matter/authors/ LOOKS GOOD
 

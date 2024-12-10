@@ -6,13 +6,13 @@ edition = "2021"
 [dependencies]
 anyhow = { workspace = true }
 # axum = "=0.8.0-alpha.1"   # Breaks maud integration
-axum = "0.7"
-directories = "5.0.1"
+axum = "0.7" # The web server framework. Written by the tokio team.
+directories = "5.0.1" # Used to figure out where to put the database
 gapix_core = { path = "../gapix_core" }
-maud = { version = "0.26.0", features = ["axum"] }
-mime_guess = { version = "2.0" }
-opener = "0.7.2"
-rust-embed = { version = "8.5.0", features = ["include-exclude"] }
+maud = { version = "0.26.0", features = ["axum"] } # Templating using the html! macro
+mime_guess = { version = "2.0" } # Used to serve the embedded assets with the correct mime type
+opener = "0.7.2" # Used to automatically open the browser window
+rust-embed = { version = "8.5.0", features = ["include-exclude"] } # Used to embed the 'assets' folder
 tokio = { version = "1.42", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
