@@ -83,6 +83,7 @@
 - Replay and "race" multiple replays at once
 - Trend analysis
 - Download as spreadsheet
+- Favicon
 
 
 ## Plan
