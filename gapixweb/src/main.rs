@@ -2,11 +2,10 @@ use std::{thread, time::Duration};
 
 use asset::static_handler;
 use axum::{routing::get, Router};
-use database::make_connection;
 use index::index;
 use tracing::info;
 use tracing_subscriber::fmt::format::FmtSpan;
-use database::migration::{Migrator, MigratorTrait};
+use database::{conn::make_connection, migration::{Migrator, MigratorTrait}};
 
 mod asset;
 mod database;

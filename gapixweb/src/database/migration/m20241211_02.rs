@@ -1,10 +1,9 @@
 use sea_orm::Schema;
 use sea_orm_migration::prelude::*;
-
-use crate::database::file::Entity as File;
-
 #[derive(DeriveMigrationName)]
 pub struct Migration;
+
+use crate::database::model::file::Entity as File;
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
