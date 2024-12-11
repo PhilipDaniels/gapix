@@ -5,6 +5,7 @@ use directories::ProjectDirs;
 use sea_orm::{Database, DatabaseConnection};
 use tracing::{info, instrument};
 
+#[instrument]
 pub async fn make_connection() -> Result<DatabaseConnection> {
     let conn_str = conn_str()?;
     info!("conn_str={conn_str}");

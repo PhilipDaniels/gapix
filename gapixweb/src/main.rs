@@ -5,6 +5,7 @@ use axum::{routing::get, Router};
 use database::make_connection;
 use index::index;
 use tracing::info;
+use tracing_subscriber::fmt::format::FmtSpan;
 
 mod asset;
 mod database;
@@ -47,6 +48,9 @@ async fn main() -> anyhow::Result<()> {
 fn configure_tracing() {
     tracing_subscriber::fmt()
         .with_line_number(true)
+        .with_span_events(FmtSpan::CLOSE)   // Makes #[instrument] output something
+        //.with_thread_ids(true)
+        //.with_thread_names(true)
         .with_max_level(tracing::Level::TRACE)
         .with_test_writer()
         .init();
