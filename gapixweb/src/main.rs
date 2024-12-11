@@ -6,6 +6,7 @@ use database::make_connection;
 use index::index;
 use tracing::info;
 use tracing_subscriber::fmt::format::FmtSpan;
+use database::migration::{Migrator, MigratorTrait};
 
 mod asset;
 mod database;
@@ -18,6 +19,8 @@ async fn main() -> anyhow::Result<()> {
 
     let conn = make_connection().await?;
     assert!(conn.ping().await.is_ok());
+    // Apply all pending migrations.
+    Migrator::up(&conn, None).await?;
 
     let app = Router::new()
         .route("/", get(index))

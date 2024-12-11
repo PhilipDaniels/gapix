@@ -3,9 +3,8 @@ use std::path::PathBuf;
 use anyhow::{bail, Result};
 use directories::ProjectDirs;
 use sea_orm::{Database, DatabaseConnection};
-use tracing::{info, instrument};
+use tracing::info;
 
-#[instrument]
 pub async fn make_connection() -> Result<DatabaseConnection> {
     let conn_str = conn_str()?;
     info!("conn_str={conn_str}");
@@ -39,5 +38,6 @@ fn database_path() -> Result<PathBuf> {
 
     #[cfg(not(debug_assertions))]
     pb.push("gapixweb.db");
+
     Ok(pb)
 }
