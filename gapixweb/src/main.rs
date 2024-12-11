@@ -3,9 +3,10 @@ use std::{thread, time::Duration};
 use asset::static_handler;
 use axum::{routing::get, Router};
 use index::index;
+use sea_orm::{ActiveValue, EntityTrait};
 use tracing::info;
 use tracing_subscriber::fmt::format::FmtSpan;
-use database::{conn::make_connection, migration::{Migrator, MigratorTrait}};
+use database::{conn::make_connection, migration::{Migrator, MigratorTrait}, ActiveFile, File};
 
 mod asset;
 mod database;
@@ -20,6 +21,15 @@ async fn main() -> anyhow::Result<()> {
     assert!(conn.ping().await.is_ok());
     // Apply all pending migrations.
     Migrator::up(&conn, None).await?;
+
+    // TEST: Insert an entity.
+    let f = ActiveFile {
+        name: ActiveValue::Set("~/Cycling/ride.gpx".to_string()),
+        hash: ActiveValue::Set("my hash".to_string()),
+        data: ActiveValue::Set(vec![12u8,234u8,64u8,2u8]),
+        ..Default::default()
+    };
+    let _ = File::insert(f).exec(&conn).await?;
 
     let app = Router::new()
         .route("/", get(index))

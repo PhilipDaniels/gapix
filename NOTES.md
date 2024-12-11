@@ -82,8 +82,10 @@
 
 
 ## Plan
+- Spliut between 'entity' and 'model'? Where entity is for db, and model
+  is for the API, and create From<> conversions for them? We would want a
+  FileRequest and a FileResponse model, for example.
+- Do something with htmx and an API call
 - Get tracing and logging working into RAM
-- Create a database using SeaORM
-- Serve the tailwind and htmx assets
 - Shutdown axum when the window is closed: https://github.com/tokio-rs/axum/discussions/1500
 - Favicon
