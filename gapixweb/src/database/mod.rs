@@ -1,8 +1,8 @@
 #![allow(unused)]
 
 pub mod migration;
-pub mod model;
+pub mod entity;
 pub mod conn;
 
-pub use model::file::Entity as File;
-pub use model::file::ActiveModel as ActiveFile;
+pub use entity::file::Entity as File;
+pub use entity::file::ActiveModel as ActiveFile;
