@@ -1,8 +1,10 @@
 use axum::{
-    http::{header, StatusCode, Uri},
+    http::{header, Uri},
     response::{IntoResponse, Response},
 };
 use rust_embed::Embed;
+
+use crate::error::ApiError;
 
 #[derive(Embed)]
 #[folder = "assets"]
@@ -36,7 +38,7 @@ where
                 let mime = mime_guess::from_path(path).first_or_octet_stream();
                 ([(header::CONTENT_TYPE, mime.as_ref())], content.data).into_response()
             }
-            None => (StatusCode::NOT_FOUND, "404 Not Found").into_response(),
+            None => ApiError::not_found().into_response(),
         }
     }
 }

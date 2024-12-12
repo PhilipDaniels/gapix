@@ -1,9 +1,9 @@
 use maud::{html, Markup, DOCTYPE};
 
-use crate::tags::tag_list;
+use crate::api::handlers::upload_file_view;
 
 pub async fn index() -> Markup {
-    index_view("GaPiX Web", tag_list())
+    index_view("GaPiX Web", upload_file_view())
 }
 
 fn index_view(title: &str, content: Markup) -> Markup {

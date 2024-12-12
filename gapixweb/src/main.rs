@@ -1,9 +1,11 @@
+#![forbid(unsafe_code)]
+
 use std::{thread, time::Duration};
 
-use api::handlers::get_file;
+use api::handlers::{get_file, post_files};
 use args::parse_args;
 use asset::static_handler;
-use axum::{routing::get, Router};
+use axum::{routing::{get, post}, Router};
 use database::{
     conn::make_connection,
     migration::{Migrator, MigratorTrait},
@@ -44,7 +46,8 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .route("/", get(index))
         .route("/assets/*file", get(static_handler))
-        .route("/file/:id", get(get_file));
+        .route("/file/:id", get(get_file))
+        .route("/file", post(post_files));
 
     // If user did not specify a port, let the OS choose a random one.
     let url = if let Some(port) = args.port {

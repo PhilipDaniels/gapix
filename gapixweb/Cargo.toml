@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = { workspace = true }
 # axum = "=0.8.0-alpha.1"   # Breaks maud integration
-axum = "0.7" # The web server framework. Written by the tokio team.
+axum = { version = "0.7", features = ["multipart"] }
 clap = { workspace = true }
 directories = { workspace = true } # Used to figure out where to put the database
 gapix_core = { path = "../gapix_core" }

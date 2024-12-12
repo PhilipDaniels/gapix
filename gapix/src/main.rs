@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use anyhow::{Context, Ok, Result};
 use args::{get_required_outputs, parse_args, Args, RequiredOutputFiles};
 use clap::builder::styling::AnsiColor;

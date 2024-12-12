@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 mod byte_counter;
 mod error;
 pub mod excel;
