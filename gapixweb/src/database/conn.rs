@@ -1,11 +1,16 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::LazyLock};
 
 use anyhow::{bail, Result};
 use directories::ProjectDirs;
 use sea_orm::{Database, DatabaseConnection};
 use tracing::info;
 
-use crate::DB_CONN_STR;
+use crate::args::parse_args;
+
+static DB_CONN_STR: LazyLock<String> = LazyLock::new(|| {
+    let args = parse_args();
+    make_conn_str(&args.database)
+});
 
 pub async fn make_connection() -> Result<DatabaseConnection> {
     let conn_str = &*DB_CONN_STR;

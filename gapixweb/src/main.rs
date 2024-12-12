@@ -1,11 +1,11 @@
-use std::{sync::LazyLock, thread, time::Duration};
+use std::{thread, time::Duration};
 
 use api::handlers::get_file;
 use args::parse_args;
 use asset::static_handler;
 use axum::{routing::get, Router};
 use database::{
-    conn::{make_conn_str, make_connection},
+    conn::make_connection,
     migration::{Migrator, MigratorTrait},
 };
 use index::index;
@@ -19,11 +19,6 @@ mod database;
 mod error;
 mod index;
 mod tags;
-
-pub static DB_CONN_STR: LazyLock<String> = LazyLock::new(|| {
-    let args = parse_args();
-    make_conn_str(&args.database)
-});
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
