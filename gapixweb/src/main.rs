@@ -1,5 +1,6 @@
 use std::{thread, time::Duration};
 
+use api::handlers::get_file;
 use asset::static_handler;
 use axum::{routing::get, Router};
 use index::index;
@@ -8,8 +9,10 @@ use tracing::info;
 use tracing_subscriber::fmt::format::FmtSpan;
 use database::{conn::make_connection, migration::{Migrator, MigratorTrait}, ActiveFile, File};
 
+mod api;
 mod asset;
 mod database;
+mod error;
 mod index;
 mod tags;
 
@@ -33,7 +36,8 @@ async fn main() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/", get(index))
-        .route("/assets/*file", get(static_handler));
+        .route("/assets/*file", get(static_handler))
+        .route("/file/:id", get(get_file));
 
     // Bind to a random port, then use a background thread to automatically open
     // the correct URL in the browser. We wait for a bit in the background
