@@ -1,11 +1,11 @@
-use std::{thread, time::Duration};
+use std::{sync::LazyLock, thread, time::Duration};
 
 use api::handlers::get_file;
 use args::parse_args;
 use asset::static_handler;
 use axum::{routing::get, Router};
 use database::{
-    conn::make_connection,
+    conn::{make_conn_str, make_connection},
     migration::{Migrator, MigratorTrait},
 };
 use index::index;
@@ -20,11 +20,17 @@ mod error;
 mod index;
 mod tags;
 
+pub static DB_CONN_STR: LazyLock<String> = LazyLock::new(|| {
+    let args = parse_args();
+    make_conn_str(&args.database)
+});
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     configure_tracing();
 
     let args = parse_args();
+    info!("Command line arguments: {args:?}");
 
     // Apply all pending migrations.
     let conn = make_connection().await?;
@@ -45,10 +51,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/assets/*file", get(static_handler))
         .route("/file/:id", get(get_file));
 
-    // Bind to a random port, then use a background thread to automatically open
-    // the correct URL in the browser. We wait for a bit in the background
-    // thread to ensure axum is started up (though this does not seem to really
-    // be necessary on my machine.)
+    // If user did not specify a port, let the OS choose a random one.
     let url = if let Some(port) = args.port {
         &format!("localhost:{port}")
     } else {
@@ -56,15 +59,25 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let listener = tokio::net::TcpListener::bind(url).await?;
+
+    // Figure out which port was actually used.
     let addr = listener.local_addr()?;
     let url = format!("http://localhost:{}", addr.port());
     info!("Listening on {url}");
+
+    // Use a background thread to automatically open the correct URL in the
+    // browser. We wait for a bit in the background thread to ensure axum is
+    // started up (though this does not seem to really be necessary on my
+    // machine).
     if args.auto_open {
         thread::spawn(|| {
             thread::sleep(Duration::from_secs_f32(0.5));
             // Ignore any errors, this is a "nice-to-have" anyway.
             let _ = opener::open_browser(url);
         });
+    } else {
+        // If not auto-opening, user needs to be told where the site is.
+        println!("Listening on {url}");
     }
 
     // We block here. Closing the browser window does
