@@ -7,7 +7,8 @@ edition = "2021"
 anyhow = { workspace = true }
 # axum = "=0.8.0-alpha.1"   # Breaks maud integration
 axum = "0.7" # The web server framework. Written by the tokio team.
-directories = "5.0.1" # Used to figure out where to put the database
+clap = { workspace = true }
+directories = { workspace = true } # Used to figure out where to put the database
 gapix_core = { path = "../gapix_core" }
 maud = { version = "0.26.0", features = ["axum"] } # Templating using the html! macro
 mime_guess = { version = "2.0" } # Used to serve the embedded assets with the correct mime type

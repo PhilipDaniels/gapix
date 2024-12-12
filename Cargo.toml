@@ -5,6 +5,7 @@ members = ["gapix_core", "gapix", "gapixweb"]
 [workspace.dependencies]
 anyhow = { version = "1.0.93", features = ["backtrace"] }
 clap = { version = "4.5.21", features = ["derive", "cargo"] }
+directories = "5.0.1"
 env_logger = "0.11.5"
 log = "0.4.22"
 logging_timer = "1.1.1"
