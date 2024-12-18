@@ -10,13 +10,12 @@ axum = { version = "0.7", features = ["multipart"] }
 clap = { workspace = true }
 directories = { workspace = true } # Used to figure out where to put the database
 gapix_core = { path = "../gapix_core" }
+gapix_database = { path = "../gapix_database" }
 maud = { version = "0.26.0", features = ["axum"] } # Templating using the html! macro
 mime_guess = { version = "2.0" } # Used to serve the embedded assets with the correct mime type
 opener = "0.7.2" # Used to automatically open the browser window
 rust-embed = { version = "8.5.0", features = ["include-exclude"] } # Used to embed the 'assets' folder
-sea-orm = { version = "1.1.0", features = [ "sqlx-sqlite", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print" ] }
-sea-orm-migration = "1.1.2"
 sha2 = "0.10.8"
-tokio = { version = "1.42", features = ["full"] }
-tracing = "0.1"
+tokio = { workspace = true }
+tracing = { workspace = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

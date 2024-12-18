@@ -4,7 +4,7 @@ use sea_orm_migration::prelude::*;
 pub struct Migration;
 
 use super::SchemaManagerExtensions;
-use crate::database::entity;
+use crate::entity;
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {

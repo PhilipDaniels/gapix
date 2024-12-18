@@ -715,10 +715,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "database"
-version = "0.1.0"
-
-[[package]]
 name = "dbus"
 version = "0.9.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1117,6 +1113,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gapix_database"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "sea-orm",
+ "sea-orm-migration",
+ "tracing",
+]
+
+[[package]]
 name = "gapixweb"
 version = "0.1.0"
 dependencies = [
@@ -1125,12 +1131,11 @@ dependencies = [
  "clap",
  "directories",
  "gapix_core",
+ "gapix_database",
  "maud",
  "mime_guess",
  "opener",
  "rust-embed",
- "sea-orm",
- "sea-orm-migration",
  "sha2",
  "tokio",
  "tracing",

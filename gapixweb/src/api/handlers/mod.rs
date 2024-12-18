@@ -1,13 +1,14 @@
-use axum::extract::{Multipart, Path};
+use axum::extract::{Multipart, Path, State};
+use gapix_database::entity;
 use maud::{html, Markup};
-use sea_orm::{ActiveValue, ActiveModelTrait};
 use sha2::{Digest, Sha256};
 use tracing::info;
 
-use crate::{database::{conn::make_connection, entity}, error::ApiResult};
+use crate::{error::ApiResult, AppState};
 
-pub async fn get_file(Path(id): Path<i32>) -> ApiResult<Markup> {
-    let file = entity::get_file(id).await.unwrap();
+pub async fn get_file(State(state): State<AppState>, Path(id): Path<i32>) -> ApiResult<Markup> {
+    let conn = state.db().await.unwrap();
+    let file = entity::get_file(conn, id).await.unwrap();
 
     let markup = html! {
         ul class="list-disc" {
@@ -49,17 +50,16 @@ pub async fn post_files(mut multipart: Multipart) {
         // Unique index on hash. Check before upload.
         // Hash should be a binary blob? Maybe a newtype.
 
-        // // TEST: Insert an entity.
-        let f = entity::file::ActiveModel {
-            name: ActiveValue::Set(file_name),
-            hash: ActiveValue::Set(format!("{:x?}", hash)),
-            data: ActiveValue::Set(data.to_vec()),
-            ..Default::default()
-        };
+        // let f = entity::file::ActiveModel {
+        //     name: ActiveValue::Set(file_name),
+        //     hash: ActiveValue::Set(format!("{:x?}", hash)),
+        //     data: ActiveValue::Set(data.to_vec()),
+        //     ..Default::default()
+        // };
 
-        let conn = make_connection().await.unwrap();
-        let res = f.insert(&conn).await.unwrap();
-        info!("Returned Id = {}", res.id);
+        // let conn = state.connection_factory.make_db_connection().await.unwrap();
+        // let res = f.insert(&conn).await.unwrap();
+        // info!("Returned Id = {}", res.id);
     }
 
     //Ok(markup)

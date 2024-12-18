@@ -1,15 +1,17 @@
 #![forbid(unsafe_code)]
 
-use std::{thread, time::Duration};
+use std::{path::PathBuf, thread, time::Duration};
 
+use anyhow::Result;
 use api::handlers::{get_file, post_files};
 use args::parse_args;
 use asset::static_handler;
-use axum::{routing::{get, post}, Router};
-use database::{
-    conn::make_connection,
-    migration::{Migrator, MigratorTrait},
+use axum::{
+    routing::{get, post},
+    Router,
 };
+use directories::ProjectDirs;
+use gapix_database::{migration::sea_orm::DatabaseConnection, ConnectionFactory};
 use index::index;
 use tracing::info;
 use tracing_subscriber::fmt::format::FmtSpan;
@@ -17,7 +19,6 @@ use tracing_subscriber::fmt::format::FmtSpan;
 mod api;
 mod args;
 mod asset;
-mod database;
 mod error;
 mod index;
 mod tags;
@@ -29,17 +30,17 @@ async fn main() -> anyhow::Result<()> {
     let args = parse_args();
     info!("Command line arguments: {args:?}");
 
-    // Apply all pending migrations.
-    let conn = make_connection().await?;
-    assert!(conn.ping().await.is_ok());
-    Migrator::up(&conn, None).await?;
+    let db_path = get_full_database_path(&args.database);
+    let connection_factory = gapix_database::initialise_database(db_path).await?;
+    let state = AppState { connection_factory };
 
     // Setup routes.
     let app = Router::new()
         .route("/", get(index))
         .route("/assets/*file", get(static_handler))
         .route("/file/:id", get(get_file))
-        .route("/file", post(post_files));
+        .route("/file", post(post_files))
+        .with_state(state);
 
     // If user did not specify a port, let the OS choose a random one.
     let url = if let Some(port) = args.port {
@@ -87,4 +88,36 @@ fn configure_tracing() {
         .with_max_level(tracing::Level::INFO)
         .with_test_writer()
         .init();
+}
+
+/// Returns the full path to the databsase file.
+fn get_full_database_path(db_name: &str) -> PathBuf {
+    if db_name.is_empty() {
+        panic!("Database name is empty");
+    }
+
+    let mut db_path: PathBuf = db_name.into();
+
+    if db_path.is_relative() {
+        let mut pb = match ProjectDirs::from("", "", env!("CARGO_PKG_NAME")) {
+            Some(dirs) => dirs.data_local_dir().to_path_buf(),
+            None => panic!("Cannot determine data_local_dir()"),
+        };
+        pb.push(db_name);
+        db_path = pb;
+    };
+
+    db_path
+}
+
+#[derive(Clone)]
+struct AppState {
+    connection_factory: ConnectionFactory
+}
+
+impl AppState {
+    /// Convenience function to make a database connection.
+    pub(crate) async fn db(&self) -> Result<DatabaseConnection> {
+        self.connection_factory.make_db_connection().await
+    }
 }
