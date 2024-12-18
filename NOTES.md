@@ -49,13 +49,11 @@
 
 ## The Database
 - https://www.reddit.com/r/rust/comments/1e8ld5d/my_take_on_databases_with_rust_seaorm_vs_diesel/
-- Put SQLLite db in known dir. Ability to use a "development" db.
 - Configuration table instead of command line parameters
 - Store entire GPX or FIT file in the db
 - Use sha256 for duplicate file detection
 - Segment type: Moving, Control, Climb, Descent, Segment, Ride
 - Segment end: lock to point within a radius of 50m
-- Tags: 200,300, Audax, DIY etc. Auto-generate and auto-copy based on previous rides.
 - Entities: Controls, Segments, Files, FileTypes
 - Should we store the individual points in a ride in a table? i.e. decompose the file?
   
@@ -80,10 +78,43 @@
 - Trend analysis
 - Download as spreadsheet
 
-
 ## Plan
 - Do something with htmx and an API call
 - Get tracing and logging working into RAM
 - Shutdown axum when the window is closed: https://github.com/tokio-rs/axum/discussions/1500
 - Favicon
 
+## Tables
+- TAG: Name (PK), 200,300,400,500,600,1000,1200 etc. DIY, Calendar, Perm, Audax
+  Auto-generate and auto-copy based on previous rides.
+- RIDE_TAG: Many-to-many for TAG to RIDE.
+- FILE: The raw data from a file upload. Contains a sha256 hash for uniqueness checking.
+- CONFIGURATION: Key,Value.
+  Saving configuration may recalculate all data.
+- VALIDATION_TYPE: DIY-MAND-GPS, DIY, e-Brevet, Brevet
+- RIDE: Id, FileId (FK), Name, Km, Points, Climb, StartTime etc.
+  EntryCost, EventNo, EventLink, Organiser
+  + Other derived fields currently in the XLSX.
+- RIDE_POINT: RideId, lat,long etc. - waypoints.
+- CONTROL: Id, Name, lat, long, Description, ToleranceCircle
+- RIDE_CONTROL: Many-to-many for CONTROL to RIDE_POINT
+- SEGMENT: Start, End, Name, SegmentType
+  A portion of a ride.
+  Master list of segments, either created by the user or previously detected.
+  Rides are split into segments. 
+- SEGMENT_TYPE: WholeRide, Stage, Climb, Descent, Custom
+- RIDE_SEGMENT: Many-to-many for RIDE to SEGMENT.
+  This is what appears on the "Stages" tab in my XLSX.
+
+## Job System
+- JOB: Id, JobType, Data.
+  JobType says that type of processing is required. Data is the key of the data.
+  Processing a job may create further jobs.
+  Doing something such as uploading a file creates a job entry, which is then detected by
+  the job processing system. Jobs are run in order. We want the ability to run in parallel too
+  if at all possible. Probably some sort of actor system.
+- JOBTYPE (enum):
+  - ProcessAllFiles, ProcessFile. These take a raw FILE and produce a RIDE.
+    Maybe have extracting the points as a separate step from the analysis?
+    Analysis can be changed based on CONFIGURATION, but extracting the points is
+    always the same.

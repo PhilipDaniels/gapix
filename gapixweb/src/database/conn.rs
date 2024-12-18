@@ -2,7 +2,7 @@ use std::{path::PathBuf, sync::LazyLock};
 
 use anyhow::{bail, Result};
 use directories::ProjectDirs;
-use sea_orm::{Database, DatabaseConnection};
+use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use tracing::info;
 
 use crate::args::parse_args;
@@ -15,7 +15,11 @@ static DB_CONN_STR: LazyLock<String> = LazyLock::new(|| {
 pub async fn make_connection() -> Result<DatabaseConnection> {
     let conn_str = &*DB_CONN_STR;
     info!("make_connection(), conn_str={conn_str}");
-    let db = Database::connect(conn_str).await?;
+
+    let mut opt = ConnectOptions::new(conn_str.to_owned());
+    opt.sqlx_logging(false); // Disable SQLx log
+
+    let db = Database::connect(opt).await?;
     Ok(db)
 }
 

@@ -34,15 +34,7 @@ async fn main() -> anyhow::Result<()> {
     assert!(conn.ping().await.is_ok());
     Migrator::up(&conn, None).await?;
 
-    // // TEST: Insert an entity.
-    // let f = ActiveFile {
-    //     name: ActiveValue::Set("~/Cycling/ride.gpx".to_string()),
-    //     hash: ActiveValue::Set("my hash".to_string()),
-    //     data: ActiveValue::Set(vec![12u8, 234u8, 64u8, 2u8]),
-    //     ..Default::default()
-    // };
-    // let _ = File::insert(f).exec(&conn).await?;
-
+    // Setup routes.
     let app = Router::new()
         .route("/", get(index))
         .route("/assets/*file", get(static_handler))
@@ -92,7 +84,7 @@ fn configure_tracing() {
         .with_span_events(FmtSpan::CLOSE) // Makes #[instrument] output something
         //.with_thread_ids(true)
         //.with_thread_names(true)
-        .with_max_level(tracing::Level::TRACE)
+        .with_max_level(tracing::Level::INFO)
         .with_test_writer()
         .init();
 }

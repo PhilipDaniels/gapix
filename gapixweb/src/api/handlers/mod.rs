@@ -45,6 +45,10 @@ pub async fn post_files(mut multipart: Multipart) {
             data.len()
         );
 
+        // TODO: File length, date of insertion.
+        // Unique index on hash. Check before upload.
+        // Hash should be a binary blob? Maybe a newtype.
+
         // // TEST: Insert an entity.
         let f = entity::file::ActiveModel {
             name: ActiveValue::Set(file_name),

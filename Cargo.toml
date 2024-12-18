@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["gapix_core", "gapix", "gapixweb"]
+members = ["gapix_core", "gapix", "gapixweb", "database"]
 
 [workspace.dependencies]
 anyhow = { version = "1.0.93", features = ["backtrace"] }
