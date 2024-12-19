@@ -1,18 +1,13 @@
 use maud::{html, Markup, DOCTYPE};
 
-use crate::api::handlers::upload_file_view;
-
-pub async fn index() -> Markup {
-    index_view("GaPiX Web", upload_file_view())
-}
-
-fn index_view(title: &str, content: Markup) -> Markup {
+/// Takes 'content' and wraps the standard header, body and footer around it.
+pub fn page(content: Markup) -> Markup {
     html! {
         (DOCTYPE)
         html class="no-js" lang="en" {
             head {
                 meta charset="utf-8";
-                title { (title) }
+                title { "GaPiX Web" }
                 script src="assets/htmx.2.0.0.min.js" {}
                 script src="assets/tailwindcss.3.4.16.js" {}
             }
@@ -22,4 +17,3 @@ fn index_view(title: &str, content: Markup) -> Markup {
         }
     }
 }
-

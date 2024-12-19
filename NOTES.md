@@ -106,7 +106,9 @@
 - SEGMENT_TYPE: WholeRide, Stage, Climb, Descent, Custom
 - RIDE_SEGMENT: Many-to-many for RIDE to SEGMENT.
   This is what appears on the "Stages" tab in my XLSX.
-
+- RIDE_GROUP: Groups similar rides, e.g. all Lincs 200 Bardney rides.
+  Has an "exemplar" ride (probably the first identified) and a similarity rating.
+  
 ## Job System
 - JOB: Id, JobType, Data.
   JobType says that type of processing is required. Data is the key of the data.

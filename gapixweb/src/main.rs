@@ -3,25 +3,21 @@
 use std::{path::PathBuf, thread, time::Duration};
 
 use anyhow::Result;
-use api::handlers::{get_file, post_files};
 use args::parse_args;
 use asset::static_handler;
-use axum::{
-    routing::{get, post},
-    Router,
-};
+use axum::{routing::get, Router};
 use directories::ProjectDirs;
 use gapix_database::{migration::sea_orm::DatabaseConnection, ConnectionFactory};
-use index::index;
 use tracing::info;
 use tracing_subscriber::fmt::format::FmtSpan;
+use views::ride;
 
 mod api;
 mod args;
 mod asset;
+mod components;
 mod error;
-mod index;
-mod tags;
+mod views;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -36,10 +32,10 @@ async fn main() -> anyhow::Result<()> {
 
     // Setup routes.
     let app = Router::new()
-        .route("/", get(index))
+        .route("/", get(ride::rides_view))
         .route("/assets/*file", get(static_handler))
-        .route("/file/:id", get(get_file))
-        .route("/file", post(post_files))
+        .route("/ride", get(ride::rides_view))
+        .route("/ride/:id", get(ride::ride_view))
         .with_state(state);
 
     // If user did not specify a port, let the OS choose a random one.
@@ -112,7 +108,7 @@ fn get_full_database_path(db_name: &str) -> PathBuf {
 
 #[derive(Clone)]
 struct AppState {
-    connection_factory: ConnectionFactory
+    connection_factory: ConnectionFactory,
 }
 
 impl AppState {
