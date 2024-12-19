@@ -6,6 +6,7 @@ use anyhow::Result;
 use args::parse_args;
 use asset::static_handler;
 use axum::{routing::get, Router};
+use components::tabs::Tabs;
 use directories::ProjectDirs;
 use gapix_database::{migration::sea_orm::DatabaseConnection, ConnectionFactory};
 use tracing::info;
@@ -34,8 +35,12 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .route("/", get(ride::rides_view))
         .route("/assets/*file", get(static_handler))
-        .route("/ride", get(ride::rides_view))
-        .route("/ride/:id", get(ride::ride_view))
+        .route(Tabs::Rides.href(), get(ride::rides_view))
+        .route(Tabs::Segments.href(), get(ride::rides_view))
+        .route(Tabs::Controls.href(), get(ride::rides_view))
+        .route(Tabs::Settings.href(), get(ride::rides_view))
+        .route(Tabs::Jobs.href(), get(ride::rides_view))
+        .route("/rides/:id", get(ride::ride_view))
         .with_state(state);
 
     // If user did not specify a port, let the OS choose a random one.

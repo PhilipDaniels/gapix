@@ -6,3 +6,4 @@
 //! footer for all views.
 
 pub(crate) mod page;
+pub(crate) mod tabs;
