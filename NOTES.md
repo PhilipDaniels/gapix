@@ -77,6 +77,7 @@
 - Replay and "race" multiple replays at once
 - Trend analysis
 - Download as spreadsheet
+- Km ridden per month per year
 
 ## Plan
 - Do something with htmx and an API call
