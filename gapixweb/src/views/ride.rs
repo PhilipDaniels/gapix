@@ -1,11 +1,15 @@
 use axum::extract::{Path, State};
 use maud::{html, Markup};
 
-use crate::{error::ApiResult, AppState};
+use crate::{components::page::page, error::ApiResult, AppState};
 
 /// Returns the list of rides for the "Rides" tab.
 pub async fn rides_view() -> Markup {
-    html!()
+    let html = html! {
+        button class="btn" { "Rides List" }
+    };
+
+    page(html)
 }
 
 /// Returns the markup for a single ride.

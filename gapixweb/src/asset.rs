@@ -9,6 +9,7 @@ use crate::error::ApiError;
 #[derive(Embed)]
 #[folder = "assets"]
 #[include = "*.js"]
+#[include = "*.css"]
 pub struct Asset;
 
 // We use a wildcard matcher ("/assets/*file") to match against everything
