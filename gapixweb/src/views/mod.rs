@@ -5,4 +5,4 @@
 //! module.
 
 pub(crate) mod ride;
-
+pub(crate) mod segment;

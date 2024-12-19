@@ -5,7 +5,11 @@ use crate::{components::{page::page, tabs::{tabs, Tabs}}, error::ApiResult, AppS
 
 /// Returns the list of rides for the "Rides" tab.
 pub async fn rides_view() -> Markup {
-    let html = tabs(Tabs::Rides);
+    let tab_content = html! { 
+        p { "List of rides goes here" }
+    };
+
+    let html = tabs(Tabs::Rides, &tab_content);
     page(html)
 }
 

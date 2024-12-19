@@ -15,14 +15,14 @@ pub(crate) enum Tabs {
 
 /// Returns the markup for the list of tabs at the top of the page.
 /// `selected_tab` specifies which tab is currently selected.
-pub fn tabs(selected_tab: Tabs) -> Markup {
+pub fn tabs(selected_tab: Tabs, selected_tab_content: &Markup) -> Markup {
     let html = html! {
         div role="tablist" class="tabs tabs-lifted" {
-            (tab(Tabs::Rides, selected_tab))
-            (tab(Tabs::Segments, selected_tab))
-            (tab(Tabs::Controls, selected_tab))
-            (tab(Tabs::Jobs, selected_tab))
-            (tab(Tabs::Settings, selected_tab))
+            (tab(Tabs::Rides, selected_tab, selected_tab_content))
+            (tab(Tabs::Segments, selected_tab, selected_tab_content))
+            (tab(Tabs::Controls, selected_tab, selected_tab_content))
+            (tab(Tabs::Jobs, selected_tab, selected_tab_content))
+            (tab(Tabs::Settings, selected_tab, selected_tab_content))
         }
     };
 
@@ -30,15 +30,18 @@ pub fn tabs(selected_tab: Tabs) -> Markup {
 }
 
 /// Creates a single tab.
-fn tab(tab: Tabs, selected_tab: Tabs) -> Markup {
-    let classes = if tab == selected_tab {
-        "tab tab-active"
+fn tab(tab: Tabs, selected_tab: Tabs, selected_tab_content: &Markup) -> Markup {
+    if tab == selected_tab {
+        html! {
+            a role="tab" class="tab tab-active" href=(tab.href()) { (tab.to_string()) }
+            div role="tabpanel" class="tab-content bg-base-100 border-base-300 rounded-box p-6" {
+                (selected_tab_content)
+            }
+        }
     } else {
-        "tab"
-    };
-
-    html! {
-        a role="tab" class=(classes) href=(tab.href()) { (tab.to_string()) }
+        html! {
+            a role="tab" class="tab" href=(tab.href()) { (tab.to_string()) }
+        }
     }
 }
 

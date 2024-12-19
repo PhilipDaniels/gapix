@@ -11,7 +11,7 @@ use directories::ProjectDirs;
 use gapix_database::{migration::sea_orm::DatabaseConnection, ConnectionFactory};
 use tracing::info;
 use tracing_subscriber::fmt::format::FmtSpan;
-use views::ride;
+use views::{ride, segment};
 
 mod api;
 mod args;
@@ -36,7 +36,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/", get(ride::rides_view))
         .route("/assets/*file", get(static_handler))
         .route(Tabs::Rides.href(), get(ride::rides_view))
-        .route(Tabs::Segments.href(), get(ride::rides_view))
+        .route(Tabs::Segments.href(), get(segment::segments_view))
         .route(Tabs::Controls.href(), get(ride::rides_view))
         .route(Tabs::Settings.href(), get(ride::rides_view))
         .route(Tabs::Jobs.href(), get(ride::rides_view))
