@@ -1,19 +1,15 @@
-use axum::extract::{Path, State};
-use maud::{html, Markup};
+use axum::response::{IntoResponse, Response};
 
-use crate::{components::{page::page, tabs::{tabs, Tabs}}, error::ApiResult, AppState};
+use super::page::PageTemplate;
 
 /// Returns the list of rides for the "Rides" tab.
-pub async fn rides_view() -> Markup {
-    let tab_content = html! { 
-        p { "List of rides goes here" }
-    };
-
-    let html = tabs(Tabs::Rides, &tab_content);
-    page(html)
+pub async fn rides_view() -> Response {
+    let t = PageTemplate { name: "aaa" };
+    t.into_response()
 }
 
 
+/*
 /// Returns the markup for a single ride.
 pub async fn ride_view(State(state): State<AppState>, Path(_id): Path<i32>) -> ApiResult<Markup> {
     let _conn = state.db().await.unwrap();
@@ -32,3 +28,4 @@ pub async fn ride_view(State(state): State<AppState>, Path(_id): Path<i32>) -> A
 
     Ok(html!())
 }
+*/

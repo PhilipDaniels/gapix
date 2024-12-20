@@ -40,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
         .route(Tabs::Controls.href(), get(ride::rides_view))
         .route(Tabs::Settings.href(), get(ride::rides_view))
         .route(Tabs::Jobs.href(), get(ride::rides_view))
-        .route("/rides/:id", get(ride::ride_view))
+        //.route("/rides/:id", get(ride::ride_view))
         .with_state(state);
 
     // If user did not specify a port, let the OS choose a random one.
