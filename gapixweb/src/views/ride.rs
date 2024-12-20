@@ -4,7 +4,7 @@ use super::page::PageTemplate;
 
 /// Returns the list of rides for the "Rides" tab.
 pub async fn rides_view() -> Response {
-    let t = PageTemplate { name: "aaa" };
+    let t = PageTemplate { name: "Phil" };
     t.into_response()
 }
 
