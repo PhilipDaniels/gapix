@@ -9,8 +9,7 @@ pub fn page(content: Markup) -> Markup {
                 meta charset="utf-8";
                 title { "GaPiX Web" }
                 script src="assets/htmx.2.0.0.min.js" {}
-                link href="assets/daisyui.4.12.22.full.min.css" rel="stylesheet" type="text/css" {}
-                script src="assets/tailwindcss.3.4.16.js" {}
+                link href="assets/gapix.css" rel="stylesheet" type="text/css" {}
             }
             body {
                 (content)
