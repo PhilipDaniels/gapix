@@ -5,4 +5,6 @@
 //! The highest-level component is 'page', which provides the common header and
 //! footer for all views.
 
+pub(crate) mod page;
 pub(crate) mod tabs;
+

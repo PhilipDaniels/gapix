@@ -1,2 +1,21 @@
 @import url("normalize.8.0.1.css");
 
+body {
+    background-color: rgb(230, 230, 230)
+}
+
+.tab-bar {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: flex-start;
+}
+
+.tab-hdr {
+    width: 5rem;
+    text-align: center;
+    margin: 0.1rem;
+}
+
+.tab-active {
+    background-color: yellow;
+}

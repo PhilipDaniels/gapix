@@ -1,5 +1,13 @@
 use std::fmt::Display;
 
+use rinja_axum::Template;
+
+#[derive(Template)]
+#[template(path = "tabs.html")]
+pub struct TabsTemplate {
+    pub active_tab: Tabs
+}
+
 /// The list of tabs at the top of the page, used to specify which tab is
 /// selected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,22 +33,6 @@ pub(crate) enum Tabs {
 //     };
 
 //     html
-// }
-
-// /// Creates a single tab.
-// fn tab(tab: Tabs, selected_tab: Tabs, selected_tab_content: &Markup) -> Markup {
-//     if tab == selected_tab {
-//         html! {
-//             a role="tab" class="tab tab-active" href=(tab.href()) { (tab.to_string()) }
-//             div role="tabpanel" class="tab-content bg-base-100 border-base-300 rounded-box p-6" {
-//                 (selected_tab_content)
-//             }
-//         }
-//     } else {
-//         html! {
-//             a role="tab" class="tab" href=(tab.href()) { (tab.to_string()) }
-//         }
-//     }
 // }
 
 impl Display for Tabs {

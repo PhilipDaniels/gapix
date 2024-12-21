@@ -1,10 +1,18 @@
 use axum::response::{IntoResponse, Response};
+use rinja_axum::Template;
 
-use super::page::PageTemplate;
+use crate::components::tabs::Tabs;
+
+#[derive(Template)]
+#[template(path = "rides.html")]
+pub struct RidesTemplate {
+    pub active_tab: Tabs
+}
 
 /// Returns the list of rides for the "Rides" tab.
 pub async fn rides_view() -> Response {
-    let t = PageTemplate { name: "Phil" };
+    //let t = TabsTemplate { active_tab: Tabs::Rides };
+    let t = RidesTemplate { active_tab: Tabs::Rides };
     t.into_response()
 }
 

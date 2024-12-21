@@ -4,6 +4,5 @@
 //! Views are constructed from partials, which are contained in the components
 //! module.
 
-pub(crate) mod page;
 pub(crate) mod ride;
 pub(crate) mod segment;
